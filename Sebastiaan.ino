@@ -3,10 +3,10 @@
 #define ECHO_PIN 6
 #define MAX_DISTANCE 200
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
-const int motorA1 = 3;
-const int motorA2 = 9;
-const int motorB1 = 10;
-const int motorB2 = 11;
+const int motorA1 = 3; //Linker wiel vooruit 
+const int motorA2 = 9; //Linker wiel vooruit
+const int motorB1 = 10; //Rechter wiel vooruit
+const int motorB2 = 11; //Rechter wiel achteruit
 const int buttonPinA = 8;
 const int buttonPinB = 2;
 const int gripper = 5;
