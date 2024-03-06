@@ -24,6 +24,7 @@ int buttonMillis;
 int motorAFullSpeed = 255;
 int motorBFullSpeed = 255;
 int motorStop = 0;
+int colorBlack = 700;
 
 
 void setup() 
@@ -141,9 +142,10 @@ void drive()
 {
   if (flagGone == 1)
   {
-    bool needToAdjustOutside1 = (lineSensorValue[2] >= 800) || (lineSensorValue[5] >= 800);
-    bool needToAdjustOutside2 = (lineSensorValue[1] >= 800) || (lineSensorValue[6] >= 800);
-    bool needToAdjustOutside3 = (lineSensorValue[0] >= 800) || (lineSensorValue[7] >= 800);
+    bool canGoForwards = (lineSensorValue[3] >= colorBlack) && (lineSensorValue[4] >= colorBlack);
+    bool needToAdjustOutside1 = (lineSensorValue[2] >= colorBlack) || (lineSensorValue[5] >= colorBlack);
+    bool needToAdjustOutside2 = (lineSensorValue[1] >= colorBlack) || (lineSensorValue[6] >= colorBlack);
+    bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
     if (distance <= 20 && distance >= 1)
     {
     }
@@ -151,7 +153,12 @@ void drive()
       else if (millis() >= adjustMillis) 
       {
         adjustMillis = millis() + adjustInterval;
-        if (needToAdjustOutside1) 
+        Serial.println(canGoForwards);
+        if (canGoForwards)
+        {
+          goForwards();
+        }
+        else if (needToAdjustOutside1) 
         { 
           adjustAngleOutside1();
         } 
