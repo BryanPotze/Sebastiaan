@@ -3,10 +3,10 @@
 #define ECHO_PIN 6
 #define MAX_DISTANCE 200
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
-const int motorA1 = 3; //Linker wiel vooruit 
-const int motorA2 = 9; //Linker wiel vooruit
-const int motorB1 = 10; //Rechter wiel vooruit
-const int motorB2 = 11; //Rechter wiel achteruit
+const int motorA1 = 3; // left motor backwards
+const int motorA2 = 9; // left motor forwards
+const int motorB1 = 10; // right motor forwards
+const int motorB2 = 11; // right motor backwards
 const int buttonPinA = 8;
 const int buttonPinB = 2;
 const int gripper = 5;
@@ -21,6 +21,9 @@ int forwardsMillis;
 int adjustMillis;
 int sonarMillis;
 int buttonMillis;
+int motorAFullSpeed = 255;
+int motorBFullSpeed = 255;
+int motorStop = 0;
 
 
 void setup() 
@@ -49,33 +52,37 @@ void loop()
 
 void goForwards() 
 {
-  analogWrite(motorA2, 255);
-  analogWrite(motorB1, 255);
+  analogWrite(motorA2, motorAFullSpeed);
+  analogWrite(motorB1, motorBFullSpeed);
+  analogWrite(motorA1, motorStop);
+  analogWrite(motorB2, motorStop);
 }
 
 void goBackwards() 
 {
-  analogWrite(motorA1, 255);
-  analogWrite(motorB2, 255);
+  analogWrite(motorA1, motorAFullSpeed);
+  analogWrite(motorB2, motorBFullSpeed);
+  analogWrite(motorA2, motorStop);
+  analogWrite(motorB1, motorStop);
 }
 void stop()
 {
-    analogWrite(motorA1, 0);
-    analogWrite(motorA2, 0);
-    analogWrite(motorB1, 0);
-    analogWrite(motorB2, 0);
+    analogWrite(motorA1, motorStop);
+    analogWrite(motorA2, motorStop);
+    analogWrite(motorB1, motorStop);
+    analogWrite(motorB2, motorStop);
 } 
 
 void adjustAngleOutside1() 
 {
   if (lineSensorValue[5] <= lineSensorValue[2]) 
   {
-    analogWrite(motorA2, 255);
+    analogWrite(motorA2, motorAFullSpeed);
     analogWrite(motorB1, 40); 
   } 
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
-    analogWrite(motorB1, 255);
+    analogWrite(motorB1, motorBFullSpeed);
     analogWrite(motorA2, 40); 
   }
 }
@@ -84,12 +91,12 @@ void adjustAngleOutside2()
 {
   if (lineSensorValue[6] <= lineSensorValue[1]) 
   {
-    analogWrite(motorA2, 255);
+    analogWrite(motorA2, motorAFullSpeed);
     analogWrite(motorB2, 20);
   } 
   else if (lineSensorValue[1] <= lineSensorValue[6]) 
   {
-    analogWrite(motorB1, 255);
+    analogWrite(motorB1, motorBFullSpeed);
     analogWrite(motorA2, 20);
   }
 }
