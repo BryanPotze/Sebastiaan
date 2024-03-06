@@ -1,30 +1,44 @@
+// sonar
 #include <NewPing.h>
 #define TRIG_PIN 7
 #define ECHO_PIN 6
 #define MAX_DISTANCE 200
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
+int flagGone = 0;
+int distance = 1;
+
+//linesensor
+const int lineSensor[] = {A0, A1, A2, A3, A4, A5, A6, A7};
+int lineSensorValue[8] = {0};
+int colorBlack = 800;
+
+// motors
 const int motorA1 = 3; // left motor backwards
 const int motorA2 = 9; // left motor forwards
 const int motorB1 = 10; // right motor forwards
-const int motorB2 = 11; // right motor backwards
+const int motorB2 = 11; // right motor backward
+int motorAFullSpeed = 255;
+int motorBFullSpeed = 255;
+int motorStop = 0;
+
+
+// buttons
 const int buttonPinA = 8;
 const int buttonPinB = 2;
-const int gripper = 5;
-const int lineSensor[] = {A0, A1, A2, A3, A4, A5, A6, A7};
-const int adjustInterval = 10; 
-int lineSensorValue[8] = {0};
 int buttonStateA;
 int buttonStateB;
-int flagGone = 0;
-int distance = 1;
+
+//gripper
+const int gripper = 5;
+
+//millis
+const int adjustInterval = 10; 
 int forwardsMillis;
 int adjustMillis;
 int sonarMillis;
 int buttonMillis;
-int motorAFullSpeed = 255;
-int motorBFullSpeed = 255;
-int motorStop = 0;
-int colorBlack = 700;
+
+
 
 
 void setup() 
@@ -142,7 +156,6 @@ void drive()
 {
   if (flagGone == 1)
   {
-    bool canGoForwards = (lineSensorValue[3] >= colorBlack) && (lineSensorValue[4] >= colorBlack);
     bool needToAdjustOutside1 = (lineSensorValue[2] >= colorBlack) || (lineSensorValue[5] >= colorBlack);
     bool needToAdjustOutside2 = (lineSensorValue[1] >= colorBlack) || (lineSensorValue[6] >= colorBlack);
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
@@ -153,12 +166,7 @@ void drive()
       else if (millis() >= adjustMillis) 
       {
         adjustMillis = millis() + adjustInterval;
-        Serial.println(canGoForwards);
-        if (canGoForwards)
-        {
-          goForwards();
-        }
-        else if (needToAdjustOutside1) 
+        if (needToAdjustOutside1) 
         { 
           adjustAngleOutside1();
         } 
