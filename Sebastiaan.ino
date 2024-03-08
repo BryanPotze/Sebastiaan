@@ -10,9 +10,10 @@ int distance = 1;
 //linesensor
 const int lineSensor[] = {A0, A1, A2, A3, A4, A5, A6, A7};
 int lineSensorValue[8] = {0};
-int colorBlack = 900;
+int colorBlack = 800;
 int colorWhite = 600;
 int finishReached = 0;
+int maxSensorIndex = 0;
 
 // motors
 const int motorA1 = 3; // left motor backwards
@@ -34,10 +35,12 @@ int buttonStateB;
 const int gripper = 5;
 
 //millis
-const int millisInterval = 10; 
+const int millisInterval = 5; 
+const int stopWhite = 1000;
 unsigned long driveMillis;
 unsigned long sonarMillis;
 unsigned long buttonMillis;
+int stopWhiteMillis;
 
 //NeoPixels General
 #include <Adafruit_NeoPixel.h>
@@ -90,6 +93,7 @@ void loop()
   readSonar();
   readSensors();
   flagReset();
+  turnBackToWhite();
   drive();
 }
 
@@ -202,14 +206,14 @@ void adjustAngleOutside1()
   if (lineSensorValue[5] <= lineSensorValue[2]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB1, 40);
+    analogWrite(motorB1, 100);
     Serial.println("adjusting1");
     goRightNeoPixels();
   } 
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 40); 
+    analogWrite(motorA2, 100); 
     Serial.println("adjusting1.2");
     goLeftNeoPixels();
   }
@@ -285,6 +289,58 @@ void flagReset()
     }
   }
 }
+void turnBackToWhite() 
+{
+  bool allSensorsBelow800 = true;
+
+  for (int i = 0; i < 8; i++)
+  {
+    if (lineSensorValue[i] >= 800)
+    {
+      allSensorsBelow800 = false;
+      break;
+    }
+  }
+
+  if (allSensorsBelow800)
+  {
+    analogWrite(motorB1, motorStop);
+    analogWrite(motorA2, motorStop);
+
+    for (int i = 1; i < 8; i++)
+    {
+      if (lineSensorValue[i] > lineSensorValue[maxSensorIndex])
+      {
+        maxSensorIndex = i;
+      }
+    }
+
+    if (maxSensorIndex == 0)
+    {
+      if (millis() >= stopWhiteMillis)
+      {
+        analogWrite(motorA2, motorStop);
+        analogWrite(motorB1, motorBFullSpeed);
+      }
+      else
+      {
+        stopWhiteMillis = millis() + 1000; 
+      }
+    }
+    else
+    {
+      if (millis() >= stopWhiteMillis)
+      {
+        analogWrite(motorA2, motorAFullSpeed);
+        analogWrite(motorB1, motorStop);
+      }
+      else
+      {
+        stopWhiteMillis = millis() + 1000; 
+      }
+    }
+  }
+}
 
 void suicidePrevention()
 {
@@ -301,6 +357,7 @@ void suicidePrevention()
   {
     goForwards();
     delay(50);
+
     aboutToCommitSuicide = (lineSensorValue[1] >= colorBlack) 
                         && (lineSensorValue[2] >= colorBlack) 
                         && (lineSensorValue[3] >= colorBlack) 
@@ -326,7 +383,7 @@ void drive()
 {
   if (flagGone == 1)
   {
-    suicidePrevention();
+//    suicidePrevention();
     bool needToAdjustOutside1 = (lineSensorValue[2] >= colorBlack) || (lineSensorValue[5] >= colorBlack);
     bool needToAdjustOutside2 = (lineSensorValue[1] >= colorBlack) || (lineSensorValue[6] >= colorBlack);
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
