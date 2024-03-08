@@ -10,7 +10,9 @@ int distance = 1;
 //linesensor
 const int lineSensor[] = {A0, A1, A2, A3, A4, A5, A6, A7};
 int lineSensorValue[8] = {0};
-int colorBlack = 800;
+int colorBlack = 900;
+int colorWhite = 600;
+int finishReached = 0;
 
 // motors
 const int motorA1 = 3; // left motor backwards
@@ -32,11 +34,11 @@ int buttonStateB;
 const int gripper = 5;
 
 //millis
-const int adjustInterval = 10; 
-int forwardsMillis;
-int adjustMillis;
-int sonarMillis;
-int buttonMillis;
+const int millisInterval = 10; 
+unsigned long driveMillis;
+unsigned long sonarMillis;
+unsigned long buttonMillis;
+
 
 
 
@@ -50,7 +52,7 @@ void setup()
   pinMode(motorB2, OUTPUT);
   pinMode(buttonPinA, INPUT);
   pinMode(buttonPinB, INPUT);
-  for (int i = 0; i < 8; i++) 
+  for (int i = 0; i < 7; i++) 
   {
     pinMode(lineSensor[i], INPUT);
   }
@@ -71,6 +73,7 @@ void goForwards()
   analogWrite(motorB1, motorBFullSpeed);
   analogWrite(motorA1, motorStop);
   analogWrite(motorB2, motorStop);
+  Serial.println("forwards");
 }
 
 void goBackwards() 
@@ -79,13 +82,15 @@ void goBackwards()
   analogWrite(motorB2, motorBFullSpeed);
   analogWrite(motorA2, motorStop);
   analogWrite(motorB1, motorStop);
+  Serial.println("backwards");
 }
-void stop()
+void stopDriving()
 {
-    analogWrite(motorA1, motorStop);
-    analogWrite(motorA2, motorStop);
-    analogWrite(motorB1, motorStop);
-    analogWrite(motorB2, motorStop);
+   analogWrite(motorA1, motorStop);
+   analogWrite(motorA2, motorStop);
+   analogWrite(motorB1, motorStop);
+   analogWrite(motorB2, motorStop);
+   Serial.println("stopping");
 } 
 
 void adjustAngleOutside1() 
@@ -93,12 +98,14 @@ void adjustAngleOutside1()
   if (lineSensorValue[5] <= lineSensorValue[2]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB1, 40); 
+    analogWrite(motorB1, 40);
+    Serial.println("adjusting1");
   } 
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
     analogWrite(motorA2, 40); 
+    Serial.println("adjusting1.2");
   }
 }
 
@@ -108,11 +115,13 @@ void adjustAngleOutside2()
   {
     analogWrite(motorA2, motorAFullSpeed);
     analogWrite(motorB2, 20);
+    Serial.println("adjusting2");
   } 
   else if (lineSensorValue[1] <= lineSensorValue[6]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
     analogWrite(motorA2, 20);
+    Serial.println("adjusting2.1");
   }
 }
 
@@ -122,11 +131,13 @@ void adjustAngleOutside3()
   {
     analogWrite(motorA2, 100);
     analogWrite(motorB2, 0);
+    Serial.println("adjusting3");
   } 
   else if (lineSensorValue[0] <= lineSensorValue[7]) 
   {
     analogWrite(motorB1, 100);
     analogWrite(motorA2, 0);
+    Serial.println("adjusting3.1");
   }
 }
 void readSensors() 
@@ -152,41 +163,81 @@ void flagReset()
   }
 }
 
+void suicidePrevention()
+{
+  static unsigned long startTime = 0;
+  static bool aboutToCommitSuicide = false;
+
+  bool lineSensorCondition = (lineSensorValue[1] >= colorBlack) 
+                           && (lineSensorValue[2] >= colorBlack) 
+                           && (lineSensorValue[3] >= colorBlack) 
+                           && (lineSensorValue[4] >= colorBlack) 
+                           && (lineSensorValue[5] >= colorBlack) 
+                           && (lineSensorValue[6] >= colorBlack) 
+                           && (lineSensorValue[7] >= colorBlack) 
+                           && (lineSensorValue[0] >= colorBlack);
+
+  if (lineSensorCondition) 
+  {
+    if (!aboutToCommitSuicide)
+    {
+      startTime = millis();
+      aboutToCommitSuicide = true;
+    } 
+    else if (millis() - startTime >= 100) 
+    {
+      stopDriving();
+      delay(10000); 
+      aboutToCommitSuicide = false;
+    }
+  } 
+  else 
+  {
+    aboutToCommitSuicide = false;
+  }
+}
 void drive()
 {
   if (flagGone == 1)
   {
+    suicidePrevention();
     bool needToAdjustOutside1 = (lineSensorValue[2] >= colorBlack) || (lineSensorValue[5] >= colorBlack);
     bool needToAdjustOutside2 = (lineSensorValue[1] >= colorBlack) || (lineSensorValue[6] >= colorBlack);
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
     if (distance <= 20 && distance >= 1)
     {
+        Serial.println("program failure");
     }
-  
-      else if (millis() >= adjustMillis) 
+    else if (millis() >= driveMillis) 
+    {
+      Serial.println(driveMillis);
+      driveMillis = millis() + millisInterval;
+      if (needToAdjustOutside1) 
+      { 
+        adjustAngleOutside1();
+      } 
+      else if (needToAdjustOutside2) 
       {
-        adjustMillis = millis() + adjustInterval;
-        if (needToAdjustOutside1) 
-        { 
-          adjustAngleOutside1();
-        } 
-        else if (needToAdjustOutside2) 
-        {
-          adjustAngleOutside2();
-        } 
-        else if (needToAdjustOutside3) 
-        {
-          adjustAngleOutside3();
-        } 
-        else 
-        {
-          goForwards();
-        }
+        adjustAngleOutside2();
+      } 
+      else if (needToAdjustOutside3) 
+      {
+        adjustAngleOutside3();
+      } 
+      else 
+      {
+        goForwards();
       }
+    }
+    else
+    {
+      Serial.println("this shouldnt happen");
+    }
   }
   else
   {
-  stop(); 
+    stopDriving();
+    Serial.println("program failure");
   } 
 }
 
@@ -194,7 +245,7 @@ void readSonar()
 {
    if (millis() >= sonarMillis) 
    {
-      sonarMillis = millis() + 100;
+      sonarMillis = millis() + 200;
       distance = sonar.ping_cm();
    }
 }
@@ -203,7 +254,7 @@ void readButtons()
 {
    if (millis() >= buttonMillis) 
    {
-      buttonMillis = millis() + adjustInterval;
+      buttonMillis = millis() + millisInterval;
       buttonStateA = digitalRead(buttonPinA);
       buttonStateB = digitalRead(buttonPinB);
    }
