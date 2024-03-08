@@ -10,9 +10,10 @@ int distance = 1;
 //linesensor
 const int lineSensor[] = {A0, A1, A2, A3, A4, A5, A6, A7};
 int lineSensorValue[8] = {0};
-int colorBlack = 900;
+int colorBlack = 800;
 int colorWhite = 600;
 int finishReached = 0;
+int maxSensorIndex = 0;
 
 // motors
 const int motorA1 = 3; // left motor backwards
@@ -34,10 +35,12 @@ int buttonStateB;
 const int gripper = 5;
 
 //millis
-const int millisInterval = 10; 
+const int millisInterval = 5; 
+const int stopWhite = 1000;
 unsigned long driveMillis;
 unsigned long sonarMillis;
 unsigned long buttonMillis;
+int stopWhiteMillis;
 
 
 
@@ -64,6 +67,7 @@ void loop()
   readSonar();
   readSensors();
   flagReset();
+  turnBackToWhite();
   drive();
 }
 
@@ -98,13 +102,13 @@ void adjustAngleOutside1()
   if (lineSensorValue[5] <= lineSensorValue[2]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB1, 40);
+    analogWrite(motorB1, 100);
     Serial.println("adjusting1");
   } 
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 40); 
+    analogWrite(motorA2, 100); 
     Serial.println("adjusting1.2");
   }
 }
@@ -162,45 +166,99 @@ void flagReset()
     }
   }
 }
-
-void suicidePrevention()
+void turnBackToWhite() 
 {
-  static unsigned long startTime = 0;
-  static bool aboutToCommitSuicide = false;
+  bool allSensorsBelow800 = true;
 
-  bool lineSensorCondition = (lineSensorValue[1] >= colorBlack) 
-                           && (lineSensorValue[2] >= colorBlack) 
-                           && (lineSensorValue[3] >= colorBlack) 
-                           && (lineSensorValue[4] >= colorBlack) 
-                           && (lineSensorValue[5] >= colorBlack) 
-                           && (lineSensorValue[6] >= colorBlack) 
-                           && (lineSensorValue[7] >= colorBlack) 
-                           && (lineSensorValue[0] >= colorBlack);
-
-  if (lineSensorCondition) 
+  for (int i = 0; i < 8; i++)
   {
-    if (!aboutToCommitSuicide)
+    if (lineSensorValue[i] >= 800)
     {
-      startTime = millis();
-      aboutToCommitSuicide = true;
-    } 
-    else if (millis() - startTime >= 100) 
-    {
-      stopDriving();
-      delay(10000); 
-      aboutToCommitSuicide = false;
+      allSensorsBelow800 = false;
+      break;
     }
-  } 
-  else 
+  }
+
+  if (allSensorsBelow800)
   {
-    aboutToCommitSuicide = false;
+    analogWrite(motorB1, motorStop);
+    analogWrite(motorA2, motorStop);
+
+    for (int i = 1; i < 8; i++)
+    {
+      if (lineSensorValue[i] > lineSensorValue[maxSensorIndex])
+      {
+        maxSensorIndex = i;
+      }
+    }
+
+    if (maxSensorIndex == 0)
+    {
+      if (millis() >= stopWhiteMillis)
+      {
+        analogWrite(motorA2, motorStop);
+        analogWrite(motorB1, motorBFullSpeed);
+      }
+      else
+      {
+        stopWhiteMillis = millis() + 1000; 
+      }
+    }
+    else
+    {
+      if (millis() >= stopWhiteMillis)
+      {
+        analogWrite(motorA2, motorAFullSpeed);
+        analogWrite(motorB1, motorStop);
+      }
+      else
+      {
+        stopWhiteMillis = millis() + 1000; 
+      }
+    }
   }
 }
+//void suicidePrevention()
+//{
+//  bool aboutToCommitSuicide = (lineSensorValue[1] >= colorBlack) 
+//                             && (lineSensorValue[2] >= colorBlack) 
+//                             && (lineSensorValue[3] >= colorBlack) 
+//                             && (lineSensorValue[4] >= colorBlack) 
+//                             && (lineSensorValue[5] >= colorBlack) 
+//                             && (lineSensorValue[6] >= colorBlack) 
+//                             && (lineSensorValue[7] >= colorBlack) 
+//                             && (lineSensorValue[0] >= colorBlack);
+//
+//  if (aboutToCommitSuicide)
+//  {
+//    goForwards();
+//    delay(50);
+//
+//    aboutToCommitSuicide = (lineSensorValue[1] >= colorBlack) 
+//                        && (lineSensorValue[2] >= colorBlack) 
+//                        && (lineSensorValue[3] >= colorBlack) 
+//                        && (lineSensorValue[4] >= colorBlack) 
+//                        && (lineSensorValue[5] >= colorBlack) 
+//                        && (lineSensorValue[6] >= colorBlack) 
+//                        && (lineSensorValue[7] >= colorBlack) 
+//                        && (lineSensorValue[0] >= colorBlack);
+//
+//    if (aboutToCommitSuicide)
+//    {
+//      stopDriving();
+//      delay(1000);
+//      goBackwards();
+//      delay(1000);
+//      stopDriving();
+//      delay(10000);
+//    }
+//  }
+//}
 void drive()
 {
   if (flagGone == 1)
   {
-    suicidePrevention();
+//    suicidePrevention();
     bool needToAdjustOutside1 = (lineSensorValue[2] >= colorBlack) || (lineSensorValue[5] >= colorBlack);
     bool needToAdjustOutside2 = (lineSensorValue[1] >= colorBlack) || (lineSensorValue[6] >= colorBlack);
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
