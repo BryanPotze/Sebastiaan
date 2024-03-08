@@ -39,6 +39,31 @@ unsigned long driveMillis;
 unsigned long sonarMillis;
 unsigned long buttonMillis;
 
+//NeoPixels General
+#include <Adafruit_NeoPixel.h>
+#define MAX_DISTANCE 200
+#define NUM_PIXELS 4
+#define PIXEL_PIN 13
+#define IDLE_BREATHE_DURATION 800
+Adafruit_NeoPixel pixels(NUM_PIXELS, PIXEL_PIN, NEO_RGB + NEO_KHZ800);
+
+//NeoPixels Idle
+unsigned long neoPixelsIdleLastUpdateTime = 0;
+uint8_t neoPixelsIdleBrightness = 0;
+int neoPixelsIdleDirection = 1;
+
+//NeoPixels Backwards
+unsigned long neoPixelsBackwardsPreviousMillis = 0;
+const long neoPixelsBackwardsInterval = 1000;
+
+//NeoPixels Left
+unsigned long neoPixelsLeftPreviousMillis = 0;
+const long neoPixelsLeftInterval = 500;
+
+//NeoPixels Right
+unsigned long neoPixelsRightPreviousMillis = 0;
+const long neoPixelsRightInterval = 500;
+
 
 
 
@@ -46,6 +71,7 @@ unsigned long buttonMillis;
 void setup() 
 {
   Serial.begin(9600);
+  pixels.begin();
   pinMode(motorA1, OUTPUT);
   pinMode(motorA2, OUTPUT);
   pinMode(motorB1, OUTPUT);
@@ -67,13 +93,51 @@ void loop()
   drive();
 }
 
+void setAllPixels(uint8_t red, uint8_t green, uint8_t blue) 
+{
+  for (int i = 0; i < pixels.numPixels(); i++) 
+  {
+    pixels.setPixelColor(i, pixels.Color(red, green, blue));
+  }
+  pixels.show();
+}
+
+void idleNeoPixels()
+{
+  unsigned long neoPixelsIdleCurrentUpdateTime = millis();
+  
+  // Check if it's time to update the brightness
+  if (neoPixelsIdleCurrentUpdateTime - neoPixelsIdleLastUpdateTime >= IDLE_BREATHE_DURATION / 255) {
+    // Update brightness level
+    neoPixelsIdleBrightness += neoPixelsIdleDirection;
+    
+    // Check if brightness reaches the limits
+    if (neoPixelsIdleBrightness == 0 || neoPixelsIdleBrightness == 255) {
+      // Change direction when reaching the limits
+      neoPixelsIdleDirection *= -1;
+    }
+    
+    // Update all NeoPixels with the new brightness
+    setAllPixels(neoPixelsIdleBrightness, 0, 0); // Red breathe effect
+    
+    // Update last update time
+    neoPixelsIdleLastUpdateTime = neoPixelsIdleCurrentUpdateTime;
+  }
+}
+
 void goForwards() 
 {
   analogWrite(motorA2, motorAFullSpeed);
   analogWrite(motorB1, motorBFullSpeed);
   analogWrite(motorA1, motorStop);
   analogWrite(motorB2, motorStop);
+  goForwardsNeoPixels();
   Serial.println("forwards");
+}
+
+void goForwardsNeoPixels()
+{
+  setAllPixels(0, 255, 0);
 }
 
 void goBackwards() 
@@ -82,8 +146,28 @@ void goBackwards()
   analogWrite(motorB2, motorBFullSpeed);
   analogWrite(motorA2, motorStop);
   analogWrite(motorB1, motorStop);
+  goBackwardsNeoPixels();
   Serial.println("backwards");
 }
+
+void goBackwardsNeoPixels()
+{
+  unsigned long neoPixelsBackwardsCurrentMillis = millis();
+
+  if (neoPixelsBackwardsCurrentMillis - neoPixelsBackwardsPreviousMillis >= neoPixelsBackwardsInterval) {
+    neoPixelsBackwardsPreviousMillis = neoPixelsBackwardsCurrentMillis;
+
+    static boolean neoPixelsBackwardsOn = false;
+    if (neoPixelsBackwardsOn) {
+      setAllPixels(0, 0, 0);
+    } else {
+      setAllPixels(255, 0, 0);
+    }
+    pixels.show();
+    neoPixelsBackwardsOn = !neoPixelsBackwardsOn;
+  }
+}
+
 void stopDriving()
 {
    analogWrite(motorA1, motorStop);
@@ -91,7 +175,27 @@ void stopDriving()
    analogWrite(motorB1, motorStop);
    analogWrite(motorB2, motorStop);
    Serial.println("stopping");
-} 
+}
+
+void goRightNeoPixels()
+{
+  pixels.setPixelColor(3, pixels.Color(0, 255, 0));
+  pixels.setPixelColor(2, pixels.Color(255, 50, 0));
+  pixels.show();
+  pixels.setPixelColor(1, pixels.Color(255, 50, 0));
+  pixels.show();
+  pixels.setPixelColor(0, pixels.Color(0, 255, 0));
+}
+
+void goLeftNeoPixels()
+{
+  pixels.setPixelColor(3, pixels.Color(255, 50, 0));
+  pixels.show();
+  pixels.setPixelColor(2, pixels.Color(0, 255, 0));
+  pixels.setPixelColor(1, pixels.Color(0, 255, 0));
+  pixels.setPixelColor(0, pixels.Color(255, 50, 0));
+  pixels.show();
+}
 
 void adjustAngleOutside1() 
 {
@@ -100,12 +204,18 @@ void adjustAngleOutside1()
     analogWrite(motorA2, motorAFullSpeed);
     analogWrite(motorB1, 40);
     Serial.println("adjusting1");
+    goRightNeoPixels();
   } 
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
     analogWrite(motorA2, 40); 
     Serial.println("adjusting1.2");
+    goLeftNeoPixels();
+  }
+  else
+  {
+    setAllPixels(0, 255, 0);
   }
 }
 
@@ -116,12 +226,18 @@ void adjustAngleOutside2()
     analogWrite(motorA2, motorAFullSpeed);
     analogWrite(motorB2, 20);
     Serial.println("adjusting2");
+    goRightNeoPixels();
   } 
   else if (lineSensorValue[1] <= lineSensorValue[6]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
     analogWrite(motorA2, 20);
     Serial.println("adjusting2.1");
+    goLeftNeoPixels();
+  }
+  else
+  {
+    setAllPixels(0, 255, 0);
   }
 }
 
@@ -132,14 +248,21 @@ void adjustAngleOutside3()
     analogWrite(motorA2, 100);
     analogWrite(motorB2, 0);
     Serial.println("adjusting3");
+    goRightNeoPixels();
   } 
   else if (lineSensorValue[0] <= lineSensorValue[7]) 
   {
     analogWrite(motorB1, 100);
     analogWrite(motorA2, 0);
     Serial.println("adjusting3.1");
+    goLeftNeoPixels();
+  }
+  else
+  {
+    setAllPixels(0, 255, 0);
   }
 }
+
 void readSensors() 
 {
   for (int i = 0; i < 8; i++) 
@@ -165,37 +288,40 @@ void flagReset()
 
 void suicidePrevention()
 {
-  static unsigned long startTime = 0;
-  static bool aboutToCommitSuicide = false;
+  bool aboutToCommitSuicide = (lineSensorValue[1] >= colorBlack) 
+                             && (lineSensorValue[2] >= colorBlack) 
+                             && (lineSensorValue[3] >= colorBlack) 
+                             && (lineSensorValue[4] >= colorBlack) 
+                             && (lineSensorValue[5] >= colorBlack) 
+                             && (lineSensorValue[6] >= colorBlack) 
+                             && (lineSensorValue[7] >= colorBlack) 
+                             && (lineSensorValue[0] >= colorBlack);
 
-  bool lineSensorCondition = (lineSensorValue[1] >= colorBlack) 
-                           && (lineSensorValue[2] >= colorBlack) 
-                           && (lineSensorValue[3] >= colorBlack) 
-                           && (lineSensorValue[4] >= colorBlack) 
-                           && (lineSensorValue[5] >= colorBlack) 
-                           && (lineSensorValue[6] >= colorBlack) 
-                           && (lineSensorValue[7] >= colorBlack) 
-                           && (lineSensorValue[0] >= colorBlack);
-
-  if (lineSensorCondition) 
+  if (aboutToCommitSuicide)
   {
-    if (!aboutToCommitSuicide)
-    {
-      startTime = millis();
-      aboutToCommitSuicide = true;
-    } 
-    else if (millis() - startTime >= 100) 
+    goForwards();
+    delay(50);
+    aboutToCommitSuicide = (lineSensorValue[1] >= colorBlack) 
+                        && (lineSensorValue[2] >= colorBlack) 
+                        && (lineSensorValue[3] >= colorBlack) 
+                        && (lineSensorValue[4] >= colorBlack) 
+                        && (lineSensorValue[5] >= colorBlack) 
+                        && (lineSensorValue[6] >= colorBlack) 
+                        && (lineSensorValue[7] >= colorBlack) 
+                        && (lineSensorValue[0] >= colorBlack);
+
+    if (aboutToCommitSuicide)
     {
       stopDriving();
-      delay(10000); 
-      aboutToCommitSuicide = false;
+      delay(1000);
+      goBackwards();
+      delay(1000);
+      stopDriving();
+      delay(10000);
     }
-  } 
-  else 
-  {
-    aboutToCommitSuicide = false;
   }
 }
+
 void drive()
 {
   if (flagGone == 1)
@@ -206,7 +332,8 @@ void drive()
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
     if (distance <= 20 && distance >= 1)
     {
-        Serial.println("program failure");
+      stopDriving();
+      idleNeoPixels(); // Trigger idle NeoPixels when not moving
     }
     else if (millis() >= driveMillis) 
     {
@@ -237,7 +364,7 @@ void drive()
   else
   {
     stopDriving();
-    Serial.println("program failure");
+    idleNeoPixels(); // Trigger idle NeoPixels when not moving
   } 
 }
 
