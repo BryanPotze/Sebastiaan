@@ -13,16 +13,23 @@ int lineSensorValue[8] = {0};
 int colorBlack = 900;
 int colorWhite = 600;
 int finishReached = 0;
+bool allBlack;
+bool allWhite;
 
 // motors
 const int motorA1 = 3; // left motor backwards
 const int motorA2 = 9; // left motor forwards
 const int motorB1 = 10; // right motor forwards
 const int motorB2 = 11; // right motor backward
+const int motorR1 = 4;
+const int motorR2 = 13;
 int motorAFullSpeed = 255;
 int motorBFullSpeed = 255;
 int motorStop = 0;
-
+int motor1PulsesDone = 0; 
+int motor2PulsesDone = 0;
+int previous1Pulse = 2;
+int previous2Pulse = 2;
 
 // buttons
 const int buttonPinA = 8;
@@ -31,7 +38,10 @@ int buttonStateA;
 int buttonStateB;
 
 //gripper
-const int gripper = 5;
+#define gripper 5
+#define gripperOpen 1600
+#define gripperClosed 950
+#define servoDelay 20
 
 //millis
 const int millisInterval = 10; 
@@ -39,6 +49,30 @@ unsigned long driveMillis;
 unsigned long sonarMillis;
 unsigned long buttonMillis;
 
+//neopixel
+#include <Adafruit_NeoPixel.h>
+#define MAX_DISTANCE 200
+#define NUM_PIXELS 4
+#define PIXEL_PIN 13
+#define IDLE_BREATHE_DURATION 800
+Adafruit_NeoPixel pixels(NUM_PIXELS, PIXEL_PIN, NEO_RGB + NEO_KHZ800);
+
+//NeoPixels Idle
+unsigned long neoPixelsIdleLastUpdateTime = 0;
+uint8_t neoPixelsIdleBrightness = 0;
+int neoPixelsIdleDirection = 1;
+
+//NeoPixels Backwards
+unsigned long neoPixelsBackwardsPreviousMillis = 0;
+const long neoPixelsBackwardsInterval = 1000;
+
+//NeoPixels Left
+unsigned long neoPixelsLeftPreviousMillis = 0;
+const long neoPixelsLeftInterval = 500;
+
+//NeoPixels Right
+unsigned long neoPixelsRightPreviousMillis = 0;
+const long neoPixelsRightInterval = 500;
 
 
 
@@ -56,6 +90,8 @@ void setup()
   {
     pinMode(lineSensor[i], INPUT);
   }
+   pinMode(gripper, OUTPUT);
+   digitalWrite(gripper, LOW);
 }
 
 void loop() 
@@ -63,6 +99,7 @@ void loop()
   readButtons();
   readSonar();
   readSensors();
+//  readRotation();
   flagReset();
   drive();
 }
@@ -73,7 +110,13 @@ void goForwards()
   analogWrite(motorB1, motorBFullSpeed);
   analogWrite(motorA1, motorStop);
   analogWrite(motorB2, motorStop);
-  Serial.println("forwards");
+  goForwardsNeoPixels();
+//  Serial.println("forwards");
+}
+
+void goForwardsNeoPixels()
+{
+  setAllPixels(0, 255, 0);
 }
 
 void goBackwards() 
@@ -83,7 +126,27 @@ void goBackwards()
   analogWrite(motorA2, motorStop);
   analogWrite(motorB1, motorStop);
   Serial.println("backwards");
+  goBackwardsNeoPixels();
 }
+
+void goBackwardsNeoPixels()
+{
+  unsigned long neoPixelsBackwardsCurrentMillis = millis();
+
+  if (neoPixelsBackwardsCurrentMillis - neoPixelsBackwardsPreviousMillis >= neoPixelsBackwardsInterval) {
+    neoPixelsBackwardsPreviousMillis = neoPixelsBackwardsCurrentMillis;
+
+    static boolean neoPixelsBackwardsOn = false;
+    if (neoPixelsBackwardsOn) {
+      setAllPixels(0, 0, 0);
+    } else {
+      setAllPixels(255, 0, 0);
+    }
+    pixels.show();
+    neoPixelsBackwardsOn = !neoPixelsBackwardsOn;
+  }
+}
+
 void stopDriving()
 {
    analogWrite(motorA1, motorStop);
@@ -93,6 +156,26 @@ void stopDriving()
    Serial.println("stopping");
 } 
 
+void goRightNeoPixels()
+{
+  pixels.setPixelColor(3, pixels.Color(0, 255, 0));
+  pixels.setPixelColor(2, pixels.Color(255, 50, 0));
+  pixels.show();
+  pixels.setPixelColor(1, pixels.Color(255, 50, 0));
+  pixels.show();
+  pixels.setPixelColor(0, pixels.Color(0, 255, 0));
+}
+
+void goLeftNeoPixels()
+{
+  pixels.setPixelColor(3, pixels.Color(255, 50, 0));
+  pixels.show();
+  pixels.setPixelColor(2, pixels.Color(0, 255, 0));
+  pixels.setPixelColor(1, pixels.Color(0, 255, 0));
+  pixels.setPixelColor(0, pixels.Color(255, 50, 0));
+  pixels.show();
+} 
+
 void adjustAngleOutside1() 
 {
   if (lineSensorValue[5] <= lineSensorValue[2]) 
@@ -100,12 +183,18 @@ void adjustAngleOutside1()
     analogWrite(motorA2, motorAFullSpeed);
     analogWrite(motorB1, 40);
     Serial.println("adjusting1");
+    goRightNeoPixels();
   } 
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
     analogWrite(motorA2, 40); 
     Serial.println("adjusting1.2");
+    goLeftNeoPixels();
+  }
+  else
+  {
+    setAllPixels(0, 255, 0);
   }
 }
 
@@ -116,12 +205,18 @@ void adjustAngleOutside2()
     analogWrite(motorA2, motorAFullSpeed);
     analogWrite(motorB2, 20);
     Serial.println("adjusting2");
+    goRightNeoPixels();
   } 
   else if (lineSensorValue[1] <= lineSensorValue[6]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
     analogWrite(motorA2, 20);
     Serial.println("adjusting2.1");
+    goLeftNeoPixels();
+  }
+  else
+  {
+    setAllPixels(0, 255, 0);
   }
 }
 
@@ -132,12 +227,18 @@ void adjustAngleOutside3()
     analogWrite(motorA2, 100);
     analogWrite(motorB2, 0);
     Serial.println("adjusting3");
+    goRightNeoPixels();
   } 
   else if (lineSensorValue[0] <= lineSensorValue[7]) 
   {
     analogWrite(motorB1, 100);
     analogWrite(motorA2, 0);
     Serial.println("adjusting3.1");
+    goLeftNeoPixels();
+  }
+  else
+  {
+    setAllPixels(0, 255, 0);
   }
 }
 void readSensors() 
@@ -158,49 +259,81 @@ void flagReset()
   {
     if (distance >= 30 || distance == 0)
     {
+      servo(gripperClosed);
       flagGone = 1;
     }
   }
 }
 
-void suicidePrevention()
+void colorCheck()
 {
-  static unsigned long startTime = 0;
-  static bool aboutToCommitSuicide = false;
+   allBlack = (lineSensorValue[1] >= colorBlack) 
+           && (lineSensorValue[2] >= colorBlack) 
+           && (lineSensorValue[3] >= colorBlack) 
+           && (lineSensorValue[4] >= colorBlack) 
+           && (lineSensorValue[5] >= colorBlack) 
+           && (lineSensorValue[6] >= colorBlack) 
+           && (lineSensorValue[7] >= colorBlack) 
+           && (lineSensorValue[0] >= colorBlack);
+           
+    allWhite = (lineSensorValue[1] <= colorWhite) 
+           && (lineSensorValue[2] <= colorWhite) 
+           && (lineSensorValue[3] <= colorWhite) 
+           && (lineSensorValue[4] <= colorWhite) 
+           && (lineSensorValue[5] <= colorWhite) 
+           && (lineSensorValue[6] <= colorWhite) 
+           && (lineSensorValue[7] <= colorWhite) 
+           && (lineSensorValue[0] <= colorWhite);
 
-  bool lineSensorCondition = (lineSensorValue[1] >= colorBlack) 
-                           && (lineSensorValue[2] >= colorBlack) 
-                           && (lineSensorValue[3] >= colorBlack) 
-                           && (lineSensorValue[4] >= colorBlack) 
-                           && (lineSensorValue[5] >= colorBlack) 
-                           && (lineSensorValue[6] >= colorBlack) 
-                           && (lineSensorValue[7] >= colorBlack) 
-                           && (lineSensorValue[0] >= colorBlack);
 
-  if (lineSensorCondition) 
+  
+}
+
+void stopWhenNeeded()
+{
+  colorCheck();
+
+  if (allBlack)
   {
-    if (!aboutToCommitSuicide)
+    goForwards();
+    delay(200);
+    readSensors();
+    colorCheck();
+
+    if (allBlack)
     {
-      startTime = millis();
-      aboutToCommitSuicide = true;
-    } 
-    else if (millis() - startTime >= 100) 
+      servo(gripperOpen);
+      stopDriving();
+      delay(1000);
+      goBackwards();
+      delay(1000);
+      stopDriving();
+      delay(10000);
+    }
+  }
+  if (allWhite)
+  {
+    goForwards();
+    delay(500);
+    readSensors();
+    colorCheck();
+
+    if (allWhite)
     {
       stopDriving();
-      delay(10000); 
-      aboutToCommitSuicide = false;
+      delay(100);
+      goBackwards();
+      delay(1000);
+      stopDriving();
+      delay(100);
     }
-  } 
-  else 
-  {
-    aboutToCommitSuicide = false;
   }
 }
 void drive()
 {
   if (flagGone == 1)
   {
-    suicidePrevention();
+    stopWhenNeeded();
     bool needToAdjustOutside1 = (lineSensorValue[2] >= colorBlack) || (lineSensorValue[5] >= colorBlack);
     bool needToAdjustOutside2 = (lineSensorValue[1] >= colorBlack) || (lineSensorValue[6] >= colorBlack);
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
@@ -210,7 +343,6 @@ void drive()
     }
     else if (millis() >= driveMillis) 
     {
-      Serial.println(driveMillis);
       driveMillis = millis() + millisInterval;
       if (needToAdjustOutside1) 
       { 
@@ -228,10 +360,6 @@ void drive()
       {
         goForwards();
       }
-    }
-    else
-    {
-      Serial.println("this shouldnt happen");
     }
   }
   else
@@ -258,4 +386,66 @@ void readButtons()
       buttonStateA = digitalRead(buttonPinA);
       buttonStateB = digitalRead(buttonPinB);
    }
+}
+
+void readRotation()
+{
+  int rotation1 = digitalRead(motorR1);
+  int rotation2 = digitalRead(motorR2);
+  if (previous1Pulse != rotation1)
+    {
+      motor1PulsesDone++;
+      previous1Pulse = rotation1;
+    }
+
+    if (previous2Pulse != rotation2)
+    {
+      motor2PulsesDone++;
+      previous2Pulse = rotation2;
+    }
+  int totalRotations = motor1PulsesDone + motor2PulsesDone;
+  while (totalRotations < 10)
+  {
+    goForwards();
+    Serial.println(totalRotations);
+  }
+} 
+
+void servo(int pulse)
+{
+      digitalWrite(gripper, HIGH);
+      delayMicroseconds(pulse);
+      digitalWrite(gripper, LOW);
+}
+
+void setAllPixels(uint8_t red, uint8_t green, uint8_t blue) 
+{
+  for (int i = 0; i < pixels.numPixels(); i++)  
+  {
+    pixels.setPixelColor(i, pixels.Color(red, green, blue));
+  }
+  pixels.show();
+}
+
+void idleNeoPixels()
+{
+  unsigned long neoPixelsIdleCurrentUpdateTime = millis();
+  
+  // Check if it's time to update the brightness
+  if (neoPixelsIdleCurrentUpdateTime - neoPixelsIdleLastUpdateTime >= IDLE_BREATHE_DURATION / 255) {
+    // Update brightness level
+    neoPixelsIdleBrightness += neoPixelsIdleDirection;
+    
+    // Check if brightness reaches the limits
+    if (neoPixelsIdleBrightness == 0 || neoPixelsIdleBrightness == 255) {
+      // Change direction when reaching the limits
+      neoPixelsIdleDirection *= -1;
+    }
+    
+    // Update all NeoPixels with the new brightness
+    setAllPixels(neoPixelsIdleBrightness, 0, 0); // Red breathe effect
+    
+    // Update last update time
+    neoPixelsIdleLastUpdateTime = neoPixelsIdleCurrentUpdateTime;
+  }
 }
