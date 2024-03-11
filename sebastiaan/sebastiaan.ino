@@ -80,6 +80,7 @@ const long neoPixelsRightInterval = 500;
 void setup() 
 {
   Serial.begin(9600);
+  pixels.begin();
   pinMode(motorA1, OUTPUT);
   pinMode(motorA2, OUTPUT);
   pinMode(motorB1, OUTPUT);
