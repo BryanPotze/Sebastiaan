@@ -1,7 +1,7 @@
 // sonar
 #include <NewPing.h>
 #define TRIG_PIN 7
-#define ECHO_PIN 6
+#define ECHO_PIN 12
 #define MAX_DISTANCE 200
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
 int flagGone = 0;
@@ -17,28 +17,27 @@ bool allBlack;
 bool allWhite;
 
 // motors
-const int motorA1 = 3; // left motor backwards
+const int motorA1 = 5; // left motor backwards
 const int motorA2 = 9; // left motor forwards
 const int motorB1 = 10; // right motor forwards
-const int motorB2 = 11; // right motor backward
-const int motorR1 = 4;
-const int motorR2 = 13;
+const int motorB2 = 6; // right motor backward
+const int motorR1 = 2;
+const int motorR2 = 3;
+int r1Rotations = 0;
+int r2Rotations = 0;
 int motorAFullSpeed = 255;
 int motorBFullSpeed = 255;
 int motorStop = 0;
-int motor1PulsesDone = 0; 
-int motor2PulsesDone = 0;
-int previous1Pulse = 2;
-int previous2Pulse = 2;
+
 
 // buttons
 const int buttonPinA = 8;
-const int buttonPinB = 2;
+const int buttonPinB = 11;
 int buttonStateA;
 int buttonStateB;
 
 //gripper
-#define gripper 5
+#define gripper 4
 #define gripperOpen 1600
 #define gripperClosed 950
 #define servoDelay 20
@@ -80,6 +79,7 @@ const long neoPixelsRightInterval = 500;
 void setup() 
 {
   Serial.begin(9600);
+  pixels.begin();
   pinMode(motorA1, OUTPUT);
   pinMode(motorA2, OUTPUT);
   pinMode(motorB1, OUTPUT);
@@ -92,6 +92,8 @@ void setup()
   }
    pinMode(gripper, OUTPUT);
    digitalWrite(gripper, LOW);
+   attachInterrupt(digitalPinToInterrupt(motorR1), rotateR1, CHANGE);
+   attachInterrupt(digitalPinToInterrupt(motorR2), rotateR2, CHANGE);
 }
 
 void loop() 
@@ -99,7 +101,6 @@ void loop()
   readButtons();
   readSonar();
   readSensors();
-//  readRotation();
   flagReset();
   drive();
 }
@@ -259,8 +260,8 @@ void flagReset()
   {
     if (distance >= 30 || distance == 0)
     {
-      servo(gripperClosed);
       flagGone = 1;
+      startSequence();
     }
   }
 }
@@ -284,8 +285,6 @@ void colorCheck()
            && (lineSensorValue[6] <= colorWhite) 
            && (lineSensorValue[7] <= colorWhite) 
            && (lineSensorValue[0] <= colorWhite);
-
-
   
 }
 
@@ -302,9 +301,12 @@ void stopWhenNeeded()
 
     if (allBlack)
     {
-      servo(gripperOpen);
+
       stopDriving();
-      delay(1000);
+      delay(500);
+      goBackwards();
+      delay(300);
+      servo(gripperOpen);
       goBackwards();
       delay(1000);
       stopDriving();
@@ -327,7 +329,29 @@ void stopWhenNeeded()
       stopDriving();
       delay(100);
     }
+    
   }
+}
+
+void goAroundObject()
+{
+    goBackwards();
+    delay(100);
+    analogWrite(motorA2, 255);
+    analogWrite(motorB1, 100);
+    analogWrite(motorB2, 0);
+    analogWrite(motorA1, 0);
+    delay(1000);
+    analogWrite(motorA2, 100);
+    analogWrite(motorB1, 255);
+    analogWrite(motorB2, 0);
+    analogWrite(motorA1, 0);
+    delay(1800);
+    analogWrite(motorA2, 255);
+    analogWrite(motorB1, 100);
+    analogWrite(motorB2, 0);
+    analogWrite(motorA1, 0);
+    delay(1000);
 }
 void drive()
 {
@@ -339,7 +363,7 @@ void drive()
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
     if (distance <= 20 && distance >= 1)
     {
-        Serial.println("program failure");
+      goAroundObject();
     }
     else if (millis() >= driveMillis) 
     {
@@ -388,34 +412,59 @@ void readButtons()
    }
 }
 
-void readRotation()
+void rotateR1() 
 {
-  int rotation1 = digitalRead(motorR1);
-  int rotation2 = digitalRead(motorR2);
-  if (previous1Pulse != rotation1)
-    {
-      motor1PulsesDone++;
-      previous1Pulse = rotation1;
-    }
+  r1Rotations++;
+}
 
-    if (previous2Pulse != rotation2)
-    {
-      motor2PulsesDone++;
-      previous2Pulse = rotation2;
-    }
-  int totalRotations = motor1PulsesDone + motor2PulsesDone;
-  while (totalRotations < 10)
-  {
+void rotateR2() 
+{
+  r2Rotations++;
+}
+
+void startSequence()
+{
+
+static bool goneForwards = false;
+if (buttonStateB == LOW)
+{
+  flagGone = 0;
+  flagReset();
+}
+if (r1Rotations < 290)
+{
     goForwards();
-    Serial.println(totalRotations);
-  }
+    Serial.println(r1Rotations);
+    startSequence();
+}
+else if (!goneForwards)
+{
+  r2Rotations = 0;
+  goneForwards = true;
+  servo(gripperClosed);
+  startSequence();
+}
+else if (r2Rotations < 100)
+{
+  analogWrite(motorA1, motorAFullSpeed);
+  analogWrite(motorB1, motorBFullSpeed);
+  analogWrite(motorA2, motorStop);
+  analogWrite(motorB2, motorStop);
+  startSequence();
+}
+
+  
 } 
 
 void servo(int pulse)
 {
-      digitalWrite(gripper, HIGH);
-      delayMicroseconds(pulse);
-      digitalWrite(gripper, LOW);
+      for (int i = 0; i < 8; i++)
+      {
+        digitalWrite(gripper, HIGH);
+        delayMicroseconds(pulse);
+        digitalWrite(gripper, LOW);
+      }
+
 }
 
 void setAllPixels(uint8_t red, uint8_t green, uint8_t blue) 
