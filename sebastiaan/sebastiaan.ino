@@ -98,10 +98,10 @@ void setup()
 
 void loop() 
 {
+  flagReset();
   readButtons();
   readSonar();
   readSensors();
-  flagReset();
   drive();
 }
 
@@ -250,18 +250,29 @@ void readSensors()
   }
 }
 
-void flagReset()
+void buttonClicked()
 {
   if (buttonStateA == LOW)
   {
     flagGone = 0;
   }
+}
+
+void flagReset()
+{
+  buttonClicked();
   if (flagGone == 0)
   {
     if (distance >= 30 || distance == 0)
     {
       flagGone = 1;
+      Serial.println(distance);
       startSequence();
+    }
+    else
+    {
+    
+      Serial.println("Standing at flag");
     }
   }
 }
@@ -291,45 +302,48 @@ void colorCheck()
 void stopWhenNeeded()
 {
   colorCheck();
-
-  if (allBlack)
+  buttonClicked();
+  if (flagGone == 1)
   {
-    goForwards();
-    delay(200);
-    readSensors();
-    colorCheck();
-
     if (allBlack)
     {
-
-      stopDriving();
-      delay(500);
-      goBackwards();
-      delay(300);
-      servo(gripperOpen);
-      goBackwards();
-      delay(1000);
-      stopDriving();
-      delay(10000);
+      goForwards();
+      delay(200);
+      readSensors();
+      colorCheck();
+  
+      if (allBlack)
+      {
+  
+        stopDriving();
+        delay(500);
+        goBackwards();
+        delay(300);
+        servo(gripperOpen);
+        goBackwards();
+        delay(1000);
+        stopDriving();
+        delay(10000);
+      }
     }
-  }
-  if (allWhite)
-  {
-    goForwards();
-    delay(500);
-    readSensors();
-    colorCheck();
-
     if (allWhite)
     {
-      stopDriving();
-      delay(100);
-      goBackwards();
-      delay(1000);
-      stopDriving();
-      delay(100);
+      goForwards();
+      delay(500);
+      readSensors();
+      colorCheck();
+  
+      if (allWhite)
+      {
+        stopDriving();
+        delay(100);
+        goBackwards();
+        delay(1000);
+        stopDriving();
+        delay(100);
+      }
+      
     }
-    
   }
 }
 
@@ -390,6 +404,7 @@ void drive()
   {
     stopDriving();
     Serial.println("program failure");
+    flagReset();
   } 
 }
 
@@ -414,7 +429,7 @@ void readButtons()
 
 void rotateR1() 
 {
-  r1Rotations++;
+    r1Rotations++;
 }
 
 void rotateR2() 
@@ -425,33 +440,34 @@ void rotateR2()
 void startSequence()
 {
 
-static bool goneForwards = false;
-if (buttonStateB == LOW)
+if (flagGone == 1)
 {
-  flagGone = 0;
-  flagReset();
+  r1Rotations = 0;
+  while(distance < 30)
+  {
+    readSonar();
+  }
+  while ((r1Rotations < 280) && (flagGone == 1))
+  {
+      buttonClicked();
+      goForwards();
+      Serial.println(flagGone);
+  }
+    stopDriving();
+    r2Rotations = 0;
+    servo(gripperClosed);
+
+  while ((r2Rotations < 100) && (flagGone == 1))
+  {
+    Serial.println(r2Rotations);
+    buttonClicked();
+    analogWrite(motorA1, motorAFullSpeed);
+    analogWrite(motorB1, motorBFullSpeed);
+    analogWrite(motorA2, motorStop);
+    analogWrite(motorB2, motorStop);
+  } 
 }
-if (r1Rotations < 290)
-{
-    goForwards();
-    Serial.println(r1Rotations);
-    startSequence();
-}
-else if (!goneForwards)
-{
-  r2Rotations = 0;
-  goneForwards = true;
-  servo(gripperClosed);
-  startSequence();
-}
-else if (r2Rotations < 100)
-{
-  analogWrite(motorA1, motorAFullSpeed);
-  analogWrite(motorB1, motorBFullSpeed);
-  analogWrite(motorA2, motorStop);
-  analogWrite(motorB2, motorStop);
-  startSequence();
-}
+
 
   
 } 
