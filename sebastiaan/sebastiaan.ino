@@ -11,7 +11,7 @@ int distance = 1;
 const int lineSensor[] = {A0, A1, A2, A3, A4, A5, A6, A7};
 int lineSensorValue[8] = {0};
 int colorBlack = 900;
-int colorWhite = 600;
+int colorWhite = 700;
 int finishReached = 0;
 bool allBlack;
 bool allWhite;
@@ -351,6 +351,9 @@ void goAroundObject()
 {
     goBackwards();
     delay(100);
+    r1Rotations = 0;
+    r2Rotations = 0;
+    
     analogWrite(motorA2, 255);
     analogWrite(motorB1, 100);
     analogWrite(motorB2, 0);
@@ -377,7 +380,18 @@ void drive()
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
     if (distance <= 20 && distance >= 1)
     {
-      goAroundObject();
+      for (int i = 0; i < 11; i++)
+      {
+        if (!distance <=20 && !distance >=1)
+        {
+          break;
+        }
+        if (i == 10)
+        {
+          goAroundObject();
+        } 
+        delay(10);
+      }
     }
     else if (millis() >= driveMillis) 
     {
@@ -443,33 +457,57 @@ void startSequence()
 if (flagGone == 1)
 {
   r1Rotations = 0;
-  while(distance < 30)
+  while(distance < 30 && distance > 0)
   {
     readSonar();
   }
-  while ((r1Rotations < 280) && (flagGone == 1))
+  while ((r1Rotations < 180) && (flagGone == 1))
   {
       buttonClicked();
-      goForwards();
+      static bool startupDone = false;
+      if (!startupDone)
+      {
+        for (int i = 100; i < 200; i++)
+        {
+          buttonClicked();
+          analogWrite(motorA2, i);
+          analogWrite(motorB1, i);
+          analogWrite(motorA1, motorStop);
+          analogWrite(motorB2, motorStop);
+        }
+        startupDone = true;
+      }
+
+      analogWrite(motorA2, 200);
+      analogWrite(motorB1, 200);
+      analogWrite(motorA1, motorStop);
+      analogWrite(motorB2, motorStop);
       Serial.println(flagGone);
   }
+  colorCheck();
+  while (!allWhite)
+  {
+      colorCheck();
+      analogWrite(motorA2, 200);
+      analogWrite(motorB1, 200);
+      analogWrite(motorA1, motorStop);
+      analogWrite(motorB2, motorStop);
+  }
+    delay(100);
     stopDriving();
     r2Rotations = 0;
     servo(gripperClosed);
 
-  while ((r2Rotations < 100) && (flagGone == 1))
+  while ((r2Rotations < 50) && (flagGone == 1))
   {
     Serial.println(r2Rotations);
     buttonClicked();
-    analogWrite(motorA1, motorAFullSpeed);
-    analogWrite(motorB1, motorBFullSpeed);
+    analogWrite(motorA1, 200);
+    analogWrite(motorB1, 175);
     analogWrite(motorA2, motorStop);
     analogWrite(motorB2, motorStop);
   } 
-}
-
-
-  
+}  
 } 
 
 void servo(int pulse)
