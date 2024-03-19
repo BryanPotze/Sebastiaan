@@ -349,26 +349,38 @@ void stopWhenNeeded()
 
 void goAroundObject()
 {
+    stopDriving();
+    delay(50);
     goBackwards();
-    delay(100);
+    delay(200);
     r1Rotations = 0;
+    Serial.println(r1Rotations);
+    while (r1Rotations < 50)
+    {
+      Serial.println(r1Rotations);
+      analogWrite(motorA2, 100);
+      analogWrite(motorB1, 255);
+      analogWrite(motorB2, 0);
+      analogWrite(motorA1, 0);
+    }
+    stopDriving();
     r2Rotations = 0;
-    
-    analogWrite(motorA2, 255);
-    analogWrite(motorB1, 100);
-    analogWrite(motorB2, 0);
-    analogWrite(motorA1, 0);
-    delay(1000);
-    analogWrite(motorA2, 100);
-    analogWrite(motorB1, 255);
-    analogWrite(motorB2, 0);
-    analogWrite(motorA1, 0);
-    delay(1800);
-    analogWrite(motorA2, 255);
-    analogWrite(motorB1, 100);
-    analogWrite(motorB2, 0);
-    analogWrite(motorA1, 0);
-    delay(1000);
+    while (r2Rotations < 50)
+    {
+      analogWrite(motorA2, 255);
+      analogWrite(motorB1, 100);
+      analogWrite(motorB2, 0);
+      analogWrite(motorA1, 0);
+    }
+    stopDriving();
+    r1Rotations = 0;
+    while (r1Rotations < 50)
+    {
+      analogWrite(motorA2, 100);
+      analogWrite(motorB1, 255);
+      analogWrite(motorB2, 0);
+      analogWrite(motorA1, 0);
+    }
 }
 void drive()
 {
@@ -456,12 +468,12 @@ void startSequence()
 
 if (flagGone == 1)
 {
-  r1Rotations = 0;
-  while(distance < 30 && distance > 0)
+  r2Rotations = 0;
+  while(distance < 10)
   {
     readSonar();
   }
-  while ((r1Rotations < 180) && (flagGone == 1))
+  while ((r2Rotations < 100) && (flagGone == 1))
   {
       buttonClicked();
       static bool startupDone = false;
@@ -482,7 +494,7 @@ if (flagGone == 1)
       analogWrite(motorB1, 200);
       analogWrite(motorA1, motorStop);
       analogWrite(motorB2, motorStop);
-      Serial.println(flagGone);
+      Serial.println(r1Rotations);
   }
   colorCheck();
   while (!allWhite)
@@ -495,10 +507,10 @@ if (flagGone == 1)
   }
     delay(100);
     stopDriving();
-    r2Rotations = 0;
+    r1Rotations = 0;
     servo(gripperClosed);
 
-  while ((r2Rotations < 50) && (flagGone == 1))
+  while ((r1Rotations < 55) && (flagGone == 1))
   {
     Serial.println(r2Rotations);
     buttonClicked();
