@@ -347,20 +347,6 @@ void stopWhenNeeded()
     }
     if (allWhite)
     {
-//      goForwards();
-//      delay(500);
-//      readSensors();
-//      colorCheck();
-//  
-//      if (allWhite)
-//      {
-//        stopDriving();
-//        delay(100);
-//        goBackwards();
-//        delay(1000);
-//        stopDriving();
-//        delay(100);
-//      }
         Serial.println(lastSensor);
         if (lastSensor == 1)
         {
@@ -387,7 +373,6 @@ void goAroundObject()
     goBackwards();
     delay(200);
     r1Rotations = 0;
-//    Serial.println(r1Rotations);
     while (r1Rotations < 20)
     {
       Serial.println(r1Rotations);
@@ -410,15 +395,6 @@ void goAroundObject()
     stopDriving();
     Serial.println("success2");
     lastSensor = 1;
-//    r1Rotations = 0;
-//    while (r1Rotations < 10)
-//    {
-//      analogWrite(motorA2, 100);
-//      analogWrite(motorB1, 255);
-//      analogWrite(motorB2, 0);
-//      analogWrite(motorA1, 0);
-//    }
-//    stopDriving();
 }
 void drive()
 {
