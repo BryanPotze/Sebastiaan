@@ -14,7 +14,7 @@ int colorBlack = 900;
 int colorWhite = 700;
 int finishReached = 0;
 bool allBlack;
-bool allWhite;
+bool allWhite; 
 
 // motors
 const int motorA1 = 5; // left motor backwards
@@ -28,6 +28,7 @@ int r2Rotations = 0;
 int motorAFullSpeed = 255;
 int motorBFullSpeed = 255;
 int motorStop = 0;
+int lastSensor = 0;
 
 
 // buttons
@@ -185,6 +186,7 @@ void adjustAngleOutside1()
     analogWrite(motorB1, 40);
     Serial.println("adjusting1");
     goRightNeoPixels();
+    lastSensor = 1;
   } 
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
@@ -192,6 +194,7 @@ void adjustAngleOutside1()
     analogWrite(motorA2, 40); 
     Serial.println("adjusting1.2");
     goLeftNeoPixels();
+    lastSensor = 2;
   }
   else
   {
@@ -207,6 +210,7 @@ void adjustAngleOutside2()
     analogWrite(motorB2, 20);
     Serial.println("adjusting2");
     goRightNeoPixels();
+    lastSensor = 1;
   } 
   else if (lineSensorValue[1] <= lineSensorValue[6]) 
   {
@@ -214,6 +218,7 @@ void adjustAngleOutside2()
     analogWrite(motorA2, 20);
     Serial.println("adjusting2.1");
     goLeftNeoPixels();
+    lastSensor = 2;
   }
   else
   {
@@ -229,6 +234,7 @@ void adjustAngleOutside3()
     analogWrite(motorB2, 0);
     Serial.println("adjusting3");
     goRightNeoPixels();
+    lastSensor = 1;
   } 
   else if (lineSensorValue[0] <= lineSensorValue[7]) 
   {
@@ -236,6 +242,7 @@ void adjustAngleOutside3()
     analogWrite(motorA2, 0);
     Serial.println("adjusting3.1");
     goLeftNeoPixels();
+    lastSensor = 2;
   }
   else
   {
@@ -287,6 +294,11 @@ void colorCheck()
            && (lineSensorValue[6] >= colorBlack) 
            && (lineSensorValue[7] >= colorBlack) 
            && (lineSensorValue[0] >= colorBlack);
+
+    if (allBlack)
+    {
+      Serial.println(lineSensorValue[4]);
+    }
            
     allWhite = (lineSensorValue[1] <= colorWhite) 
            && (lineSensorValue[2] <= colorWhite) 
@@ -308,13 +320,20 @@ void stopWhenNeeded()
     if (allBlack)
     {
       goForwards();
-      delay(200);
+      delay(100);
       readSensors();
       colorCheck();
+      Serial.println(allBlack);
+      delay(100);
+      readSensors();
+      colorCheck();
+      Serial.println(allBlack);
+      
   
       if (allBlack)
       {
-  
+        Serial.println("why no please stop");
+        
         stopDriving();
         delay(500);
         goBackwards();
@@ -328,21 +347,35 @@ void stopWhenNeeded()
     }
     if (allWhite)
     {
-      goForwards();
-      delay(500);
-      readSensors();
-      colorCheck();
-  
-      if (allWhite)
-      {
-        stopDriving();
-        delay(100);
-        goBackwards();
-        delay(1000);
-        stopDriving();
-        delay(100);
-      }
-      
+//      goForwards();
+//      delay(500);
+//      readSensors();
+//      colorCheck();
+//  
+//      if (allWhite)
+//      {
+//        stopDriving();
+//        delay(100);
+//        goBackwards();
+//        delay(1000);
+//        stopDriving();
+//        delay(100);
+//      }
+        Serial.println(lastSensor);
+        if (lastSensor == 1)
+        {
+          analogWrite(motorA2, motorAFullSpeed);
+          analogWrite(motorB1, 40);
+          Serial.println("adjusting1");
+          goRightNeoPixels();
+        }
+        if (lastSensor == 2)
+        {
+          analogWrite(motorA2, 40);
+          analogWrite(motorB1, motorAFullSpeed);
+          Serial.println("adjusting1");
+          goLeftNeoPixels();
+        }
     }
   }
 }
@@ -354,33 +387,38 @@ void goAroundObject()
     goBackwards();
     delay(200);
     r1Rotations = 0;
-    Serial.println(r1Rotations);
-    while (r1Rotations < 50)
+//    Serial.println(r1Rotations);
+    while (r1Rotations < 20)
     {
       Serial.println(r1Rotations);
-      analogWrite(motorA2, 100);
+      analogWrite(motorA2, 150);
       analogWrite(motorB1, 255);
       analogWrite(motorB2, 0);
       analogWrite(motorA1, 0);
     }
     stopDriving();
+    Serial.println("success");
     r2Rotations = 0;
-    while (r2Rotations < 50)
+    while (r2Rotations < 20)
     {
+      Serial.println(r2Rotations);
       analogWrite(motorA2, 255);
-      analogWrite(motorB1, 100);
+      analogWrite(motorB1, 150);
       analogWrite(motorB2, 0);
       analogWrite(motorA1, 0);
     }
     stopDriving();
-    r1Rotations = 0;
-    while (r1Rotations < 50)
-    {
-      analogWrite(motorA2, 100);
-      analogWrite(motorB1, 255);
-      analogWrite(motorB2, 0);
-      analogWrite(motorA1, 0);
-    }
+    Serial.println("success2");
+    lastSensor = 1;
+//    r1Rotations = 0;
+//    while (r1Rotations < 10)
+//    {
+//      analogWrite(motorA2, 100);
+//      analogWrite(motorB1, 255);
+//      analogWrite(motorB2, 0);
+//      analogWrite(motorA1, 0);
+//    }
+//    stopDriving();
 }
 void drive()
 {
@@ -466,60 +504,61 @@ void rotateR2()
 void startSequence()
 {
 
-if (flagGone == 1)
-{
-  r2Rotations = 0;
-  while(distance < 10)
+  if (flagGone == 1)
   {
-    readSonar();
-  }
-  while ((r2Rotations < 100) && (flagGone == 1))
-  {
-      buttonClicked();
-      static bool startupDone = false;
-      if (!startupDone)
-      {
-        for (int i = 100; i < 200; i++)
-        {
-          buttonClicked();
-          analogWrite(motorA2, i);
-          analogWrite(motorB1, i);
-          analogWrite(motorA1, motorStop);
-          analogWrite(motorB2, motorStop);
-        }
-        startupDone = true;
-      }
-
-      analogWrite(motorA2, 200);
-      analogWrite(motorB1, 200);
-      analogWrite(motorA1, motorStop);
-      analogWrite(motorB2, motorStop);
-      Serial.println(r1Rotations);
-  }
-  colorCheck();
-  while (!allWhite)
-  {
-      colorCheck();
-      analogWrite(motorA2, 200);
-      analogWrite(motorB1, 200);
-      analogWrite(motorA1, motorStop);
-      analogWrite(motorB2, motorStop);
-  }
-    delay(100);
-    stopDriving();
     r1Rotations = 0;
-    servo(gripperClosed);
-
-  while ((r1Rotations < 55) && (flagGone == 1))
-  {
-    Serial.println(r2Rotations);
-    buttonClicked();
-    analogWrite(motorA1, 200);
-    analogWrite(motorB1, 175);
-    analogWrite(motorA2, motorStop);
-    analogWrite(motorB2, motorStop);
-  } 
-}  
+    while(distance < 3)
+    {
+      readSonar();
+    }
+    while ((r1Rotations < 60) && (flagGone == 1))
+    {
+        buttonClicked();
+        static bool startupDone = false;
+        if (!startupDone)
+        {
+          for (int i = 100; i < 200; i++)
+          {
+            buttonClicked();
+            analogWrite(motorA2, i);
+            analogWrite(motorB1, i);
+            analogWrite(motorA1, motorStop);
+            analogWrite(motorB2, motorStop);
+          }
+          startupDone = true;
+        }
+  
+        analogWrite(motorA2, 250);
+        analogWrite(motorB1, 250);
+        analogWrite(motorA1, motorStop);
+        analogWrite(motorB2, motorStop);
+        Serial.println(r1Rotations);
+    }
+//    colorCheck();
+//    while (!allWhite)
+//    {
+//        colorCheck();
+//        analogWrite(motorA2, 200);
+//        analogWrite(motorB1, 200);
+//        analogWrite(motorA1, motorStop);
+//        analogWrite(motorB2, motorStop);
+//    }
+//      delay(100);
+      stopDriving();
+      r2Rotations = 0;
+      servo(gripperClosed);
+  
+    while ((r2Rotations < 25) && (flagGone == 1))
+    {
+      Serial.println(r2Rotations);
+      buttonClicked();
+      analogWrite(motorA1, 255);
+      analogWrite(motorB1, 255);
+      analogWrite(motorA2, motorStop);
+      analogWrite(motorB2, motorStop);
+    }
+    Serial.println("Done");
+  }  
 } 
 
 void servo(int pulse)
