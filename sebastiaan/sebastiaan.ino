@@ -44,7 +44,7 @@ int buttonStateB;
 #define servoDelay 20
 
 //millis
-const int millisInterval = 10; 
+const int millisInterval = 30; 
 unsigned long driveMillis;
 unsigned long sonarMillis;
 unsigned long buttonMillis;
@@ -183,7 +183,7 @@ void adjustAngleOutside1()
   if (lineSensorValue[5] <= lineSensorValue[2]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB1, 40);
+    analogWrite(motorB1,115);
     Serial.println("adjusting1");
     goRightNeoPixels();
     lastSensor = 1;
@@ -191,7 +191,7 @@ void adjustAngleOutside1()
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 40); 
+    analogWrite(motorA2, 115); 
     Serial.println("adjusting1.2");
     goLeftNeoPixels();
     lastSensor = 2;
@@ -207,7 +207,7 @@ void adjustAngleOutside2()
   if (lineSensorValue[6] <= lineSensorValue[1]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB2, 20);
+    analogWrite(motorB2, 50);
     Serial.println("adjusting2");
     goRightNeoPixels();
     lastSensor = 1;
@@ -215,7 +215,7 @@ void adjustAngleOutside2()
   else if (lineSensorValue[1] <= lineSensorValue[6]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 20);
+    analogWrite(motorA2, 50);
     Serial.println("adjusting2.1");
     goLeftNeoPixels();
     lastSensor = 2;
@@ -230,16 +230,20 @@ void adjustAngleOutside3()
 {
   if (lineSensorValue[7] <= lineSensorValue[0]) 
   {
-    analogWrite(motorA2, 100);
-    analogWrite(motorB2, 0);
+    analogWrite(motorA2, 255);
+    analogWrite(motorB1, 0);
+    analogWrite(motorB2, 110);
+    analogWrite(motorA1, 0);
     Serial.println("adjusting3");
     goRightNeoPixels();
     lastSensor = 1;
   } 
   else if (lineSensorValue[0] <= lineSensorValue[7]) 
   {
-    analogWrite(motorB1, 100);
+    analogWrite(motorB1, 255);
     analogWrite(motorA2, 0);
+    analogWrite(motorB2, 0);
+    analogWrite(motorA1, 110);
     Serial.println("adjusting3.1");
     goLeftNeoPixels();
     lastSensor = 2;
@@ -351,13 +355,13 @@ void stopWhenNeeded()
         if (lastSensor == 1)
         {
           analogWrite(motorA2, motorAFullSpeed);
-          analogWrite(motorB1, 40);
+          analogWrite(motorB1, 0);
           Serial.println("adjusting1");
           goRightNeoPixels();
         }
         if (lastSensor == 2)
         {
-          analogWrite(motorA2, 40);
+          analogWrite(motorA2, 0);
           analogWrite(motorB1, motorAFullSpeed);
           Serial.println("adjusting1");
           goLeftNeoPixels();
@@ -365,42 +369,80 @@ void stopWhenNeeded()
     }
   }
 }
-
-void goAroundObject()
+ 
+void goAroundObject() 
 {
     stopDriving();
-    delay(50);
+    unsigned long startTime = millis();
     goBackwards();
-    delay(200);
-    r1Rotations = 0;
-    while (r1Rotations < 20)
+    while (millis() - startTime < 250) 
     {
-      Serial.println(r1Rotations);
-      analogWrite(motorA2, 150);
-      analogWrite(motorB1, 255);
-      analogWrite(motorB2, 0);
-      analogWrite(motorA1, 0);
     }
-    stopDriving();
-    Serial.println("success");
-    r2Rotations = 0;
-    while (r2Rotations < 20)
+
+    startTime = millis();
+    while (millis() - startTime < 1000) 
     {
-      Serial.println(r2Rotations);
-      analogWrite(motorA2, 255);
-      analogWrite(motorB1, 150);
-      analogWrite(motorB2, 0);
-      analogWrite(motorA1, 0);
+        analogWrite(motorA2, 150);
+        analogWrite(motorB1, 255); 
+        analogWrite(motorB2, 0);
+        analogWrite(motorA1, 0);
     }
+
+    bool blackDetected = false;
+
+    while (!blackDetected) 
+    {
+        startTime = millis();
+        while (millis() - startTime < 500)
+        {
+            readSensors();
+            if (anyBlack()) 
+            {
+                blackDetected = true;
+                break; 
+            }
+
+            analogWrite(motorA2, 255); 
+            analogWrite(motorB1, 150); 
+            analogWrite(motorB2, 0);
+            analogWrite(motorA1, 0);
+        }
+
+        if (!blackDetected) 
+        {
+            while (!anyBlack()) 
+            {
+                analogWrite(motorA2, 255); 
+                analogWrite(motorB1, 110); 
+                analogWrite(motorB2, 0);
+                analogWrite(motorA1, 0);
+                readSensors();
+            }
+        }
+    }
+
     stopDriving();
-    Serial.println("success2");
     lastSensor = 1;
 }
+
+bool anyBlack() 
+{
+    for (int i = 0; i < 8; i++) 
+    {
+        if (lineSensorValue[i] >= colorBlack) 
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void drive()
 {
   if (flagGone == 1)
   {
     stopWhenNeeded();
+    bool goForwards1 = (lineSensorValue[0] >=colorBlack) && (lineSensorValue[1] >=colorBlack);
     bool needToAdjustOutside1 = (lineSensorValue[2] >= colorBlack) || (lineSensorValue[5] >= colorBlack);
     bool needToAdjustOutside2 = (lineSensorValue[1] >= colorBlack) || (lineSensorValue[6] >= colorBlack);
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
@@ -422,7 +464,11 @@ void drive()
     else if (millis() >= driveMillis) 
     {
       driveMillis = millis() + millisInterval;
-      if (needToAdjustOutside1) 
+      if (goForwards1)
+      {
+        goForwards();
+      }
+      else if (needToAdjustOutside1) 
       { 
         adjustAngleOutside1();
       } 
@@ -510,16 +556,7 @@ void startSequence()
         analogWrite(motorB2, motorStop);
         Serial.println(r1Rotations);
     }
-//    colorCheck();
-//    while (!allWhite)
-//    {
-//        colorCheck();
-//        analogWrite(motorA2, 200);
-//        analogWrite(motorB1, 200);
-//        analogWrite(motorA1, motorStop);
-//        analogWrite(motorB2, motorStop);
-//    }
-//      delay(100);
+      delay(100);
       stopDriving();
       r2Rotations = 0;
       servo(gripperClosed);
@@ -561,21 +598,17 @@ void idleNeoPixels()
 {
   unsigned long neoPixelsIdleCurrentUpdateTime = millis();
   
-  // Check if it's time to update the brightness
   if (neoPixelsIdleCurrentUpdateTime - neoPixelsIdleLastUpdateTime >= IDLE_BREATHE_DURATION / 255) {
-    // Update brightness level
+
     neoPixelsIdleBrightness += neoPixelsIdleDirection;
     
-    // Check if brightness reaches the limits
     if (neoPixelsIdleBrightness == 0 || neoPixelsIdleBrightness == 255) {
-      // Change direction when reaching the limits
       neoPixelsIdleDirection *= -1;
     }
+
+    setAllPixels(neoPixelsIdleBrightness, 0, 0); 
     
-    // Update all NeoPixels with the new brightness
-    setAllPixels(neoPixelsIdleBrightness, 0, 0); // Red breathe effect
-    
-    // Update last update time
+
     neoPixelsIdleLastUpdateTime = neoPixelsIdleCurrentUpdateTime;
   }
 }
