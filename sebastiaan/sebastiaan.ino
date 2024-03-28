@@ -512,12 +512,40 @@ void readButtons()
 
 void rotateR1() 
 {
-    r1Rotations++;
+    noInterrupts();
+    static unsigned long timer;
+    static bool lastState;
+    if (millis() > timer)
+    {
+      bool state = digitalRead(motorR2);
+      if (state != lastState)
+      {
+        r1Rotations++;
+        lastState = state;
+      }
+
+       timer = millis() + 10;
+    }
+    interrupts();
 }
 
 void rotateR2() 
 {
-  r2Rotations++;
+    noInterrupts();
+    static unsigned long timer;
+    static bool lastState;
+    if (millis() > timer)
+    {
+      bool state = digitalRead(motorR2);
+      if (state != lastState)
+      {
+        r2Rotations++;
+        lastState = state;
+      }
+
+       timer = millis() + 10;
+    }
+    interrupts();
 }
 
 void startSequence()
