@@ -183,7 +183,7 @@ void adjustAngleOutside1()
   if (lineSensorValue[5] <= lineSensorValue[2]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB1,115);
+    analogWrite(motorB1,70);
     Serial.println("adjusting1");
     goRightNeoPixels();
     lastSensor = 1;
@@ -191,7 +191,7 @@ void adjustAngleOutside1()
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 115); 
+    analogWrite(motorA2, 70); 
     Serial.println("adjusting1.2");
     goLeftNeoPixels();
     lastSensor = 2;
@@ -207,7 +207,7 @@ void adjustAngleOutside2()
   if (lineSensorValue[6] <= lineSensorValue[1]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB2, 50);
+    analogWrite(motorB2, 20);
     Serial.println("adjusting2");
     goRightNeoPixels();
     lastSensor = 1;
@@ -215,7 +215,7 @@ void adjustAngleOutside2()
   else if (lineSensorValue[1] <= lineSensorValue[6]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 50);
+    analogWrite(motorA2, 20);
     Serial.println("adjusting2.1");
     goLeftNeoPixels();
     lastSensor = 2;
@@ -382,7 +382,7 @@ void goAroundObject()
     startTime = millis();
     while (millis() - startTime < 1000) 
     {
-        analogWrite(motorA2, 150);
+        analogWrite(motorA2, 160);
         analogWrite(motorB1, 255); 
         analogWrite(motorB2, 0);
         analogWrite(motorA1, 0);
@@ -413,7 +413,7 @@ void goAroundObject()
             while (!anyBlack()) 
             {
                 analogWrite(motorA2, 255); 
-                analogWrite(motorB1, 110); 
+                analogWrite(motorB1, 120); 
                 analogWrite(motorB2, 0);
                 analogWrite(motorA1, 0);
                 readSensors();
