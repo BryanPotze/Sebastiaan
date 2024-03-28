@@ -37,10 +37,10 @@ const int buttonPinB = 11;
 int buttonStateA;
 int buttonStateB;
 
-//gripper
-#define gripper 4
-#define gripperOpen 1600
-#define gripperClosed 950
+//GRIPPER
+#define GRIPPER 4
+#define GRIPPER_OPEN 1600
+#define GRIPPER_CLOSED 950
 #define servoDelay 20
 
 //millis
@@ -56,25 +56,10 @@ unsigned long buttonMillis;
 #define PIXEL_PIN 13
 #define IDLE_BREATHE_DURATION 800
 Adafruit_NeoPixel pixels(NUM_PIXELS, PIXEL_PIN, NEO_RGB + NEO_KHZ800);
-
-//NeoPixels Idle
 unsigned long neoPixelsIdleLastUpdateTime = 0;
 uint8_t neoPixelsIdleBrightness = 0;
 int neoPixelsIdleDirection = 1;
-
-//NeoPixels Backwards
-unsigned long neoPixelsBackwardsPreviousMillis = 0;
-const long neoPixelsBackwardsInterval = 1000;
-
-//NeoPixels Left
-unsigned long neoPixelsLeftPreviousMillis = 0;
-const long neoPixelsLeftInterval = 500;
-
-//NeoPixels Right
-unsigned long neoPixelsRightPreviousMillis = 0;
-const long neoPixelsRightInterval = 500;
-
-
+const int neoPixelsBackwardsInterval = 1000;
 
 
 void setup() 
@@ -91,8 +76,10 @@ void setup()
   {
     pinMode(lineSensor[i], INPUT);
   }
-   pinMode(gripper, OUTPUT);
-   digitalWrite(gripper, LOW);
+   pinMode(GRIPPER, OUTPUT);
+   digitalWrite(GRIPPER, LOW);
+   pinMode(motorR1, INPUT_PULLUP);
+   pinMode(motorR2, INPUT_PULLUP);
    attachInterrupt(digitalPinToInterrupt(motorR1), rotateR1, CHANGE);
    attachInterrupt(digitalPinToInterrupt(motorR2), rotateR2, CHANGE);
 }
@@ -113,7 +100,6 @@ void goForwards()
   analogWrite(motorA1, motorStop);
   analogWrite(motorB2, motorStop);
   goForwardsNeoPixels();
-//  Serial.println("forwards");
 }
 
 void goForwardsNeoPixels()
@@ -133,15 +119,20 @@ void goBackwards()
 
 void goBackwardsNeoPixels()
 {
+  static unsigned long neoPixelsBackwardsPreviousMillis = 0;
   unsigned long neoPixelsBackwardsCurrentMillis = millis();
 
-  if (neoPixelsBackwardsCurrentMillis - neoPixelsBackwardsPreviousMillis >= neoPixelsBackwardsInterval) {
+  if (neoPixelsBackwardsCurrentMillis - neoPixelsBackwardsPreviousMillis >= neoPixelsBackwardsInterval)
+  {
     neoPixelsBackwardsPreviousMillis = neoPixelsBackwardsCurrentMillis;
 
     static boolean neoPixelsBackwardsOn = false;
-    if (neoPixelsBackwardsOn) {
+    if (neoPixelsBackwardsOn) 
+    {
       setAllPixels(0, 0, 0);
-    } else {
+    } 
+    else 
+    {
       setAllPixels(255, 0, 0);
     }
     pixels.show();
@@ -335,7 +326,7 @@ void stopWhenNeeded()
         delay(500);
         goBackwards();
         delay(300);
-        servo(gripperOpen);
+        servo(GRIPPER_OPEN);
         goBackwards();
         delay(1000);
         stopDriving();
@@ -343,12 +334,12 @@ void stopWhenNeeded()
         int randomColors = 0;
         while (randomColors < 51)
         {
+          
           setRandomNeoPixels();
           randomColors++;
         }
 
         setAllPixels(0,0,0);
-
         delay(10000);
       }
     }
@@ -594,7 +585,7 @@ void startSequence()
       delay(100);
       stopDriving();
       r2Rotations = 0;
-      servo(gripperClosed);
+      servo(GRIPPER_CLOSED);
   
     while ((r2Rotations < 25) && (flagGone == 1))
     {
@@ -613,9 +604,9 @@ void servo(int pulse)
 {
       for (int i = 0; i < 8; i++)
       {
-        digitalWrite(gripper, HIGH);
+        digitalWrite(GRIPPER, HIGH);
         delayMicroseconds(pulse);
-        digitalWrite(gripper, LOW);
+        digitalWrite(GRIPPER, LOW);
       }
 
 }
