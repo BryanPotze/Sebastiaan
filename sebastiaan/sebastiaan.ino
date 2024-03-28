@@ -258,7 +258,7 @@ void flagReset()
   readButtons();
   if (flagGone == 0)
   {
-    if (distance >= 20 || distance == 0)
+    if (distance >= 10 || distance == 0)
     {
       flagGone = 1;
       Serial.println(distance);
