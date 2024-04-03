@@ -99,6 +99,7 @@ void goForwards()
   analogWrite(motorB1, motorBFullSpeed);
   analogWrite(motorA1, motorStop);
   analogWrite(motorB2, motorStop);
+  servo(GRIPPER_CLOSED);
   goForwardsNeoPixels();
 }
 
@@ -174,7 +175,7 @@ void adjustAngleOutside1()
   if (lineSensorValue[5] <= lineSensorValue[2]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB1,70);
+    analogWrite(motorB1,30);
     Serial.println("adjusting1");
     goRightNeoPixels();
     lastSensor = 1;
@@ -182,7 +183,7 @@ void adjustAngleOutside1()
   else if (lineSensorValue[2] <= lineSensorValue[5]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 70); 
+    analogWrite(motorA2, 30); 
     Serial.println("adjusting1.2");
     goLeftNeoPixels();
     lastSensor = 2;
@@ -198,7 +199,7 @@ void adjustAngleOutside2()
   if (lineSensorValue[6] <= lineSensorValue[1]) 
   {
     analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB2, 20);
+    analogWrite(motorB2, 50);
     Serial.println("adjusting2");
     goRightNeoPixels();
     lastSensor = 1;
@@ -206,7 +207,7 @@ void adjustAngleOutside2()
   else if (lineSensorValue[1] <= lineSensorValue[6]) 
   {
     analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 20);
+    analogWrite(motorA2, 50);
     Serial.println("adjusting2.1");
     goLeftNeoPixels();
     lastSensor = 2;
@@ -376,7 +377,7 @@ void goAroundObject()
     startTime = millis();
     while (millis() - startTime < 1000) 
     {
-        analogWrite(motorA2, 160);
+        analogWrite(motorA2, 140);
         analogWrite(motorB1, 255); 
         analogWrite(motorB2, 0);
         analogWrite(motorA1, 0);
@@ -387,7 +388,7 @@ void goAroundObject()
     while (!blackDetected) 
     {
         startTime = millis();
-        while (millis() - startTime < 500)
+        while (millis() - startTime < 2000)
         {
             readSensors();
             if (anyBlack()) 
@@ -397,7 +398,7 @@ void goAroundObject()
             }
 
             analogWrite(motorA2, 255); 
-            analogWrite(motorB1, 150); 
+            analogWrite(motorB1, 140); 
             analogWrite(motorB2, 0);
             analogWrite(motorA1, 0);
         }
@@ -407,7 +408,7 @@ void goAroundObject()
             while (!anyBlack()) 
             {
                 analogWrite(motorA2, 255); 
-                analogWrite(motorB1, 120); 
+                analogWrite(motorB1, 140); 
                 analogWrite(motorB2, 0);
                 analogWrite(motorA1, 0);
                 readSensors();
@@ -559,20 +560,17 @@ void startSequence()
     {
       readSonar();
     }
-    while ((r1Rotations < 60) && (flagGone == 1))
+    while ((r1Rotations < 45) && (flagGone == 1))
     {
         readButtons();
         static bool startupDone = false;
         if (!startupDone)
         {
-          for (int i = 100; i < 200; i++)
-          {
             readButtons();
-            analogWrite(motorA2, i);
-            analogWrite(motorB1, i);
+            analogWrite(motorA2, 255);
+            analogWrite(motorB1, 255);
             analogWrite(motorA1, motorStop);
             analogWrite(motorB2, motorStop);
-          }
           startupDone = true;
         }
   
@@ -587,7 +585,7 @@ void startSequence()
       r2Rotations = 0;
       servo(GRIPPER_CLOSED);
   
-    while ((r2Rotations < 25) && (flagGone == 1))
+    while ((r2Rotations < 20) && (flagGone == 1))
     {
       Serial.println(r2Rotations);
       readButtons();
