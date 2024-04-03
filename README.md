@@ -1,5 +1,4 @@
 ## Line follower
-<details>
 <summary>
     Sebastiaan
 </summary>
@@ -17,4 +16,3 @@ The robot has the following functions:
 - Smoothly going around any obstacles in the way.
 - Turns are executed using the rotation sensors
 - At the end, the robot must drop its object onto another large black square
-</details>
