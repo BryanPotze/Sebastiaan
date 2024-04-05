@@ -10,24 +10,25 @@ int distance = 1;
 //linesensor
 const int lineSensor[] = {A0, A1, A2, A3, A4, A5, A6, A7};
 int lineSensorValue[8] = {0};
-int colorBlack = 900;
+int colorBlack = 850;
 int colorWhite = 700;
 int finishReached = 0;
 bool allBlack;
 bool allWhite; 
 
 // motors
-const int motorA1 = 5; // left motor backwards
-const int motorA2 = 9; // left motor forwards
-const int motorB1 = 10; // right motor forwards
-const int motorB2 = 6; // right motor backward
-const int motorR1 = 2;
-const int motorR2 = 3;
+const int MOTOR_A1 = 5; // left motor backward
+const int MOTOR_A2 = 9; // left motor forward
+const int MOTOR_B1 = 10; // right motor forward
+const int MOTOR_B2 = 6; // right motor backward
+const int MOTOR_R1 = 2;
+const int MOTOR_R2 = 3;
 int r1Rotations = 0;
 int r2Rotations = 0;
-int motorAFullSpeed = 255;
-int motorBFullSpeed = 255;
-int motorStop = 0;
+const int MOTOR_A_FULL_SPEED = 255;
+const int MOTOR_A_STOP = 0;
+const int MOTOR_B_FULL_SPEED = 255;
+const int MOTOR_B_STOP = 0;
 int lastSensor = 0;
 
 
@@ -37,14 +38,14 @@ const int buttonPinB = 11;
 int buttonStateA;
 int buttonStateB;
 
-//GRIPPER
-#define GRIPPER 4
-#define GRIPPER_OPEN 1600
-#define GRIPPER_CLOSED 950
+//gripper
+#define gripper 4
+#define gripperOpen 1600
+#define gripperClosed 950
 #define servoDelay 20
 
 //millis
-const int millisInterval = 30; 
+const int millisInterval = 5; 
 unsigned long driveMillis;
 unsigned long sonarMillis;
 unsigned long buttonMillis;
@@ -56,36 +57,46 @@ unsigned long buttonMillis;
 #define PIXEL_PIN 13
 #define IDLE_BREATHE_DURATION 800
 Adafruit_NeoPixel pixels(NUM_PIXELS, PIXEL_PIN, NEO_RGB + NEO_KHZ800);
+
+//NeoPixels Idle
 unsigned long neoPixelsIdleLastUpdateTime = 0;
 uint8_t neoPixelsIdleBrightness = 0;
 int neoPixelsIdleDirection = 1;
-const int neoPixelsBackwardsInterval = 1000;
+
+//NeoPixels Backwards
+unsigned long neoPixelsBackwardsPreviousMillis = 0;
+const long neoPixelsBackwardsInterval = 1000;
+
+//NeoPixels Left
+unsigned long neoPixelsLeftPreviousMillis = 0;
+const long neoPixelsLeftInterval = 500;
+
+//NeoPixels Right
+unsigned long neoPixelsRightPreviousMillis = 0;
+const long neoPixelsRightInterval = 500;
 
 
-void setup() 
-{
+
+
+void setup() {
   Serial.begin(9600);
   pixels.begin();
-  pinMode(motorA1, OUTPUT);
-  pinMode(motorA2, OUTPUT);
-  pinMode(motorB1, OUTPUT);
-  pinMode(motorB2, OUTPUT);
+  pinMode(MOTOR_A1, OUTPUT);
+  pinMode(MOTOR_A2, OUTPUT);
+  pinMode(MOTOR_B1, OUTPUT);
+  pinMode(MOTOR_B2, OUTPUT);
   pinMode(buttonPinA, INPUT);
   pinMode(buttonPinB, INPUT);
-  for (int i = 0; i < 7; i++) 
-  {
+  for (int i = 0; i < 7; i++) {
     pinMode(lineSensor[i], INPUT);
   }
-   pinMode(GRIPPER, OUTPUT);
-   digitalWrite(GRIPPER, LOW);
-   pinMode(motorR1, INPUT_PULLUP);
-   pinMode(motorR2, INPUT_PULLUP);
-   attachInterrupt(digitalPinToInterrupt(motorR1), rotateR1, CHANGE);
-   attachInterrupt(digitalPinToInterrupt(motorR2), rotateR2, CHANGE);
+   pinMode(gripper, OUTPUT);
+   digitalWrite(gripper, LOW);
+   attachInterrupt(digitalPinToInterrupt(MOTOR_R1), rotateR1, CHANGE);
+   attachInterrupt(digitalPinToInterrupt(MOTOR_R2), rotateR2, CHANGE);
 }
 
-void loop() 
-{
+void loop() {
   flagReset();
   readButtons();
   readSonar();
@@ -93,14 +104,13 @@ void loop()
   drive();
 }
 
-void goForwards() 
-{
-  analogWrite(motorA2, motorAFullSpeed);
-  analogWrite(motorB1, motorBFullSpeed);
-  analogWrite(motorA1, motorStop);
-  analogWrite(motorB2, motorStop);
-  servo(GRIPPER_CLOSED);
+void goForwards() {
+  analogWrite(MOTOR_A2, MOTOR_A_FULL_SPEED);
+  analogWrite(MOTOR_B1, MOTOR_B_FULL_SPEED);
+  analogWrite(MOTOR_A1, MOTOR_A_STOP);
+  analogWrite(MOTOR_B2, MOTOR_B_STOP);
   goForwardsNeoPixels();
+  servo(gripperClosed);
 }
 
 void goForwardsNeoPixels()
@@ -108,32 +118,25 @@ void goForwardsNeoPixels()
   setAllPixels(0, 255, 0);
 }
 
-void goBackwards() 
-{
-  analogWrite(motorA1, motorAFullSpeed);
-  analogWrite(motorB2, motorBFullSpeed);
-  analogWrite(motorA2, motorStop);
-  analogWrite(motorB1, motorStop);
+void goBackwards() {
+  analogWrite(MOTOR_A1, MOTOR_A_FULL_SPEED);
+  analogWrite(MOTOR_B2, MOTOR_B_FULL_SPEED);
+  analogWrite(MOTOR_A2, MOTOR_B_STOP);
+  analogWrite(MOTOR_B1, MOTOR_B_STOP);
   Serial.println("backwards");
   goBackwardsNeoPixels();
 }
 
-void goBackwardsNeoPixels()
-{
-  static unsigned long neoPixelsBackwardsPreviousMillis = 0;
+void goBackwardsNeoPixels(){
   unsigned long neoPixelsBackwardsCurrentMillis = millis();
 
-  if (neoPixelsBackwardsCurrentMillis - neoPixelsBackwardsPreviousMillis >= neoPixelsBackwardsInterval)
-  {
+  if (neoPixelsBackwardsCurrentMillis - neoPixelsBackwardsPreviousMillis >= neoPixelsBackwardsInterval) {
     neoPixelsBackwardsPreviousMillis = neoPixelsBackwardsCurrentMillis;
 
     static boolean neoPixelsBackwardsOn = false;
-    if (neoPixelsBackwardsOn) 
-    {
+    if (neoPixelsBackwardsOn) {
       setAllPixels(0, 0, 0);
-    } 
-    else 
-    {
+    } else {
       setAllPixels(255, 0, 0);
     }
     pixels.show();
@@ -143,15 +146,14 @@ void goBackwardsNeoPixels()
 
 void stopDriving()
 {
-   analogWrite(motorA1, motorStop);
-   analogWrite(motorA2, motorStop);
-   analogWrite(motorB1, motorStop);
-   analogWrite(motorB2, motorStop);
+   analogWrite(MOTOR_A1, MOTOR_A_STOP);
+   analogWrite(MOTOR_A2, MOTOR_A_STOP);
+   analogWrite(MOTOR_B1, MOTOR_B_STOP);
+   analogWrite(MOTOR_B2, MOTOR_B_STOP);
    Serial.println("stopping");
 } 
 
-void goRightNeoPixels()
-{
+void goRightNeoPixels(){
   pixels.setPixelColor(3, pixels.Color(0, 255, 0));
   pixels.setPixelColor(2, pixels.Color(255, 50, 0));
   pixels.show();
@@ -160,8 +162,7 @@ void goRightNeoPixels()
   pixels.setPixelColor(0, pixels.Color(0, 255, 0));
 }
 
-void goLeftNeoPixels()
-{
+void goLeftNeoPixels(){
   pixels.setPixelColor(3, pixels.Color(255, 50, 0));
   pixels.show();
   pixels.setPixelColor(2, pixels.Color(0, 255, 0));
@@ -170,85 +171,73 @@ void goLeftNeoPixels()
   pixels.show();
 } 
 
-void adjustAngleOutside1() 
-{
-  if (lineSensorValue[5] <= lineSensorValue[2]) 
-  {
-    analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB1,30);
+void adjustAngleOutside1() {
+  if (lineSensorValue[5] <= lineSensorValue[2]) {
+    analogWrite(MOTOR_A2, MOTOR_A_FULL_SPEED);
+    analogWrite(MOTOR_B1,30);
     Serial.println("adjusting1");
     goRightNeoPixels();
     lastSensor = 1;
   } 
-  else if (lineSensorValue[2] <= lineSensorValue[5]) 
-  {
-    analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 30); 
+  else if (lineSensorValue[2] <= lineSensorValue[5]) {
+    analogWrite(MOTOR_B1, MOTOR_B_FULL_SPEED);
+    analogWrite(MOTOR_A2, 30); 
     Serial.println("adjusting1.2");
     goLeftNeoPixels();
     lastSensor = 2;
   }
-  else
-  {
+  else{
     setAllPixels(0, 255, 0);
   }
 }
 
 void adjustAngleOutside2() 
 {
-  if (lineSensorValue[6] <= lineSensorValue[1]) 
-  {
-    analogWrite(motorA2, motorAFullSpeed);
-    analogWrite(motorB2, 50);
+  if (lineSensorValue[6] <= lineSensorValue[1]) {
+    analogWrite(MOTOR_A2, MOTOR_A_FULL_SPEED);
+    analogWrite(MOTOR_B1, 60);
     Serial.println("adjusting2");
     goRightNeoPixels();
     lastSensor = 1;
   } 
-  else if (lineSensorValue[1] <= lineSensorValue[6]) 
-  {
-    analogWrite(motorB1, motorBFullSpeed);
-    analogWrite(motorA2, 50);
+  else if (lineSensorValue[1] <= lineSensorValue[6]) {
+    analogWrite(MOTOR_B1, MOTOR_B_FULL_SPEED);
+    analogWrite(MOTOR_A2, 60);
     Serial.println("adjusting2.1");
     goLeftNeoPixels();
     lastSensor = 2;
   }
-  else
-  {
+  else{
     setAllPixels(0, 255, 0);
   }
 }
 
-void adjustAngleOutside3() 
-{
-  if (lineSensorValue[7] <= lineSensorValue[0]) 
-  {
-    analogWrite(motorA2, 255);
-    analogWrite(motorB1, 0);
-    analogWrite(motorB2, 110);
-    analogWrite(motorA1, 0);
+void adjustAngleOutside3() {
+  if (lineSensorValue[7] <= lineSensorValue[0]) {
+    analogWrite(MOTOR_A2, MOTOR_A_FULL_SPEED);
+    analogWrite(MOTOR_B1, MOTOR_B_STOP);
+    analogWrite(MOTOR_B2, 110);
+    analogWrite(MOTOR_A1, MOTOR_A_STOP);
     Serial.println("adjusting3");
     goRightNeoPixels();
     lastSensor = 1;
   } 
-  else if (lineSensorValue[0] <= lineSensorValue[7]) 
-  {
-    analogWrite(motorB1, 255);
-    analogWrite(motorA2, 0);
-    analogWrite(motorB2, 0);
-    analogWrite(motorA1, 110);
+  else if (lineSensorValue[0] <= lineSensorValue[7]) {
+    analogWrite(MOTOR_B1, MOTOR_B_FULL_SPEED);
+    analogWrite(MOTOR_A2, MOTOR_A_STOP);
+    analogWrite(MOTOR_B2, MOTOR_B_STOP);
+    analogWrite(MOTOR_A1, 110);
     Serial.println("adjusting3.1");
     goLeftNeoPixels();
     lastSensor = 2;
   }
-  else
-  {
+  else{
     setAllPixels(0, 255, 0);
   }
 }
 void readSensors() 
 {
-  for (int i = 0; i < 8; i++) 
-  {
+  for (int i = 0; i < 8; i++) {
     lineSensorValue[i] = analogRead(lineSensor[i]);
   }
 }
@@ -257,24 +246,19 @@ void readSensors()
 void flagReset()
 {
   readButtons();
-  if (flagGone == 0)
-  {
-    if (distance >= 10 || distance == 0)
-    {
+  if (flagGone == 0){
+    if (distance >= 20 || distance == 0){
       flagGone = 1;
       Serial.println(distance);
       startSequence();
     }
-    else
-    {
-    
+    else{
       Serial.println("Standing at flag");
     }
   }
 }
 
-void colorCheck()
-{
+void colorCheck(){
    allBlack = (lineSensorValue[1] >= colorBlack) 
            && (lineSensorValue[2] >= colorBlack) 
            && (lineSensorValue[3] >= colorBlack) 
@@ -284,8 +268,7 @@ void colorCheck()
            && (lineSensorValue[7] >= colorBlack) 
            && (lineSensorValue[0] >= colorBlack);
 
-    if (allBlack)
-    {
+    if (allBlack){
       Serial.println(lineSensorValue[4]);
     }
            
@@ -300,14 +283,11 @@ void colorCheck()
   
 }
 
-void stopWhenNeeded()
-{
+void stopWhenNeeded(){
   colorCheck();
   readButtons();
-  if (flagGone == 1)
-  {
-    if (allBlack)
-    {
+  if (flagGone == 1){
+    if (allBlack){
       goForwards();
       delay(100);
       readSensors();
@@ -319,45 +299,35 @@ void stopWhenNeeded()
       Serial.println(allBlack);
       
   
-      if (allBlack)
-      {
+      if (allBlack){
         Serial.println("why no please stop");
         
         stopDriving();
         delay(500);
         goBackwards();
         delay(300);
-        servo(GRIPPER_OPEN);
+        servo(gripperOpen);
         goBackwards();
         delay(1000);
         stopDriving();
-
-        int randomColors = 0;
-        while (randomColors < 51)
-        {
-          
-          setRandomNeoPixels();
-          randomColors++;
-        }
-
-        setAllPixels(0,0,0);
         delay(10000);
       }
     }
-    if (allWhite)
-    {
+    if (allWhite){
         Serial.println(lastSensor);
-        if (lastSensor == 1)
-        {
-          analogWrite(motorA2, motorAFullSpeed);
-          analogWrite(motorB1, 0);
+        if (lastSensor == 1){
+          analogWrite(MOTOR_A2, 255);
+          analogWrite(MOTOR_B1, 0);
+          analogWrite(MOTOR_B2, 255);
+          analogWrite(MOTOR_A1, 0);
           Serial.println("adjusting1");
           goRightNeoPixels();
         }
-        if (lastSensor == 2)
-        {
-          analogWrite(motorA2, 0);
-          analogWrite(motorB1, motorAFullSpeed);
+        if (lastSensor == 2){
+          analogWrite(MOTOR_B1, 255);
+          analogWrite(MOTOR_A2, 0);
+          analogWrite(MOTOR_B2, 0);
+          analogWrite(MOTOR_A1, 255);
           Serial.println("adjusting1");
           goLeftNeoPixels();
         }
@@ -365,52 +335,47 @@ void stopWhenNeeded()
   }
 }
  
-void goAroundObject() 
-{
+ 
+void goAroundObject() {
     stopDriving();
     unsigned long startTime = millis();
     goBackwards();
-    while (millis() - startTime < 250) 
-    {
+    while (millis() - startTime < 250) {
     }
 
     startTime = millis();
-    while (millis() - startTime < 1000) 
-    {
-        analogWrite(motorA2, 140);
-        analogWrite(motorB1, 255); 
-        analogWrite(motorB2, 0);
-        analogWrite(motorA1, 0);
+    while (millis() - startTime < 1000) {
+        analogWrite(MOTOR_A2, 160);
+        analogWrite(MOTOR_B1, 255); 
+        analogWrite(MOTOR_B2, 0);
+        analogWrite(MOTOR_A1, 0);
     }
 
     bool blackDetected = false;
 
-    while (!blackDetected) 
-    {
+    while (!blackDetected) {
         startTime = millis();
-        while (millis() - startTime < 2000)
-        {
+        while (millis() - startTime < 2000){
             readSensors();
-            if (anyBlack()) 
-            {
+            if (anyBlack()) {
                 blackDetected = true;
                 break; 
             }
 
-            analogWrite(motorA2, 255); 
-            analogWrite(motorB1, 140); 
-            analogWrite(motorB2, 0);
-            analogWrite(motorA1, 0);
+            analogWrite(MOTOR_A2, 255); 
+            analogWrite(MOTOR_B1, 130); 
+            analogWrite(MOTOR_B2, 0);
+            analogWrite(MOTOR_A1, 0);
         }
 
         if (!blackDetected) 
         {
             while (!anyBlack()) 
             {
-                analogWrite(motorA2, 255); 
-                analogWrite(motorB1, 140); 
-                analogWrite(motorB2, 0);
-                analogWrite(motorA1, 0);
+                analogWrite(MOTOR_A2, 255); 
+                analogWrite(MOTOR_B1, 110); 
+                analogWrite(MOTOR_B2, 0);
+                analogWrite(MOTOR_A1, 0);
                 readSensors();
             }
         }
@@ -420,8 +385,7 @@ void goAroundObject()
     lastSensor = 1;
 }
 
-bool anyBlack() 
-{
+bool anyBlack() {
     for (int i = 0; i < 8; i++) 
     {
         if (lineSensorValue[i] >= colorBlack) 
@@ -432,194 +396,132 @@ bool anyBlack()
     return false;
 }
 
-void drive()
-{
-  if (flagGone == 1)
-  {
+void drive() {
+  if (flagGone == 1) {
     stopWhenNeeded();
     bool goForwards1 = (lineSensorValue[0] >=colorBlack) && (lineSensorValue[1] >=colorBlack);
     bool needToAdjustOutside1 = (lineSensorValue[2] >= colorBlack) || (lineSensorValue[5] >= colorBlack);
     bool needToAdjustOutside2 = (lineSensorValue[1] >= colorBlack) || (lineSensorValue[6] >= colorBlack);
     bool needToAdjustOutside3 = (lineSensorValue[0] >= colorBlack) || (lineSensorValue[7] >= colorBlack);
-    if (distance <= 20 && distance >= 1)
-    {
-      for (int i = 0; i < 11; i++)
-      {
-        if (!distance <=20 && !distance >=1)
-        {
+    if (distance <= 20 && distance >= 1) {
+      for (int i = 0; i < 11; i++) {
+        if (!distance <=20 && !distance >=1) {
           break;
         }
-        if (i == 10)
-        {
+        if (i == 10) {
           goAroundObject();
         } 
         delay(10);
       }
     }
-    else if (millis() >= driveMillis) 
-    {
+    else if (millis() >= driveMillis) {
       driveMillis = millis() + millisInterval;
-      if (goForwards1)
-      {
+      if (goForwards1) {
         goForwards();
       }
-      else if (needToAdjustOutside1) 
-      { 
+      else if (needToAdjustOutside1) { 
         adjustAngleOutside1();
       } 
-      else if (needToAdjustOutside2) 
-      {
+      else if (needToAdjustOutside2) {
         adjustAngleOutside2();
       } 
-      else if (needToAdjustOutside3) 
-      {
+      else if (needToAdjustOutside3) {
         adjustAngleOutside3();
       } 
-      else 
-      {
+      else {
         goForwards();
       }
     }
   }
-  else
-  {
-    stopDriving();
-    Serial.println("program failure");
-    flagReset();
-  } 
 }
 
-void readSonar()
-{
-   if (millis() >= sonarMillis) 
-   {
+void readSonar() {
+   if (millis() >= sonarMillis) {
       sonarMillis = millis() + 200;
       distance = sonar.ping_cm();
    }
 }
 
-void readButtons()
-{
-   if (millis() >= buttonMillis) 
-   {
+void readButtons() {
+   if (millis() >= buttonMillis) {
       buttonMillis = millis() + millisInterval;
       buttonStateA = digitalRead(buttonPinA);
       buttonStateB = digitalRead(buttonPinB);
    }
-  if (buttonStateA == LOW)
-  {
+  if (buttonStateA == LOW) {
     flagGone = 0;
   }
 }
 
-void rotateR1() 
-{
-    noInterrupts();
-    static unsigned long timer;
-    static bool lastState;
-    if (millis() > timer)
-    {
-      bool state = digitalRead(motorR2);
-      if (state != lastState)
-      {
-        r1Rotations++;
-        lastState = state;
-      }
-
-       timer = millis() + 10;
-    }
-    interrupts();
+void rotateR1() {
+    r1Rotations++;
 }
 
-void rotateR2() 
-{
-    noInterrupts();
-    static unsigned long timer;
-    static bool lastState;
-    if (millis() > timer)
-    {
-      bool state = digitalRead(motorR2);
-      if (state != lastState)
-      {
-        r2Rotations++;
-        lastState = state;
-      }
-
-       timer = millis() + 10;
-    }
-    interrupts();
+void rotateR2() {
+  r2Rotations++;
 }
 
-void startSequence()
-{
+void startSequence() {
 
-  if (flagGone == 1)
-  {
+  if (flagGone == 1) {
     r1Rotations = 0;
-    while(distance < 3)
-    {
+    while(distance < 3) {
       readSonar();
     }
-    while ((r1Rotations < 45) && (flagGone == 1))
-    {
+    while ((r1Rotations < 60) && (flagGone == 1)) {
         readButtons();
         static bool startupDone = false;
-        if (!startupDone)
-        {
+        if (!startupDone) {
+          for (int i = 100; i < 200; i++) {
             readButtons();
-            analogWrite(motorA2, 255);
-            analogWrite(motorB1, 255);
-            analogWrite(motorA1, motorStop);
-            analogWrite(motorB2, motorStop);
+            analogWrite(MOTOR_A2, i);
+            analogWrite(MOTOR_B1, i);
+            analogWrite(MOTOR_A1, MOTOR_A_STOP);
+            analogWrite(MOTOR_B2, MOTOR_B_STOP);
+          }
           startupDone = true;
         }
   
-        analogWrite(motorA2, 250);
-        analogWrite(motorB1, 250);
-        analogWrite(motorA1, motorStop);
-        analogWrite(motorB2, motorStop);
+        analogWrite(MOTOR_A2, 250);
+        analogWrite(MOTOR_B1, 250);
+        analogWrite(MOTOR_A1, MOTOR_A_STOP);
+        analogWrite(MOTOR_B2, MOTOR_B_STOP);
         Serial.println(r1Rotations);
     }
       delay(100);
       stopDriving();
       r2Rotations = 0;
-      servo(GRIPPER_CLOSED);
+      servo(gripperClosed);
   
-    while ((r2Rotations < 20) && (flagGone == 1))
-    {
+    while ((r2Rotations < 25) && (flagGone == 1)) {
       Serial.println(r2Rotations);
       readButtons();
-      analogWrite(motorA1, 255);
-      analogWrite(motorB1, 255);
-      analogWrite(motorA2, motorStop);
-      analogWrite(motorB2, motorStop);
+      analogWrite(MOTOR_A1, 255);
+      analogWrite(MOTOR_B1, 255);
+      analogWrite(MOTOR_A2, 0);
+      analogWrite(MOTOR_B2, 0);
     }
     Serial.println("Done");
   }  
 } 
 
-void servo(int pulse)
-{
-      for (int i = 0; i < 8; i++)
-      {
-        digitalWrite(GRIPPER, HIGH);
+void servo(int pulse) {
+      for (int i = 0; i < 8; i++) {
+        digitalWrite(gripper, HIGH);
         delayMicroseconds(pulse);
-        digitalWrite(GRIPPER, LOW);
+        digitalWrite(gripper, LOW);
       }
 
 }
 
-void setAllPixels(uint8_t red, uint8_t green, uint8_t blue) 
-{
-  for (int i = 0; i < pixels.numPixels(); i++)  
-  {
+void setAllPixels(uint8_t red, uint8_t green, uint8_t blue) {
+  for (int i = 0; i < pixels.numPixels(); i++)  {
     pixels.setPixelColor(i, pixels.Color(red, green, blue));
   }
   pixels.show();
 }
 
-void idleNeoPixels()
-{
+void idleNeoPixels() {
   unsigned long neoPixelsIdleCurrentUpdateTime = millis();
   
   if (neoPixelsIdleCurrentUpdateTime - neoPixelsIdleLastUpdateTime >= IDLE_BREATHE_DURATION / 255) {
@@ -632,20 +534,6 @@ void idleNeoPixels()
 
     setAllPixels(neoPixelsIdleBrightness, 0, 0); 
     
-
     neoPixelsIdleLastUpdateTime = neoPixelsIdleCurrentUpdateTime;
   }
-}
-
-void setRandomNeoPixels()
-{
-  for(int i=0; i < NUM_PIXELS; i++)
-  {
-    uint32_t randomColor = pixels.Color(random(256), random(256), random(256));
-
-    pixels.setPixelColor(i, randomColor);
-  }
-
-  pixels.show();
-  delay(500);
 }
