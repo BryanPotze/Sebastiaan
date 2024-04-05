@@ -310,6 +310,15 @@ void stopWhenNeeded(){
         goBackwards();
         delay(1000);
         stopDriving();
+        int randomColors = 0;
+        while (randomColors < 51)
+        {
+          setRandomNeoPixels();
+          randomColors++;
+        }
+
+        setAllPixels(0,0,0);
+
         delay(10000);
       }
     }
@@ -536,4 +545,17 @@ void idleNeoPixels() {
     
     neoPixelsIdleLastUpdateTime = neoPixelsIdleCurrentUpdateTime;
   }
+}
+
+void setRandomNeoPixels()
+{
+  for(int i=0; i < NUM_PIXELS; i++)
+  {
+    uint32_t randomColor = pixels.Color(random(256), random(256), random(256));
+
+    pixels.setPixelColor(i, randomColor);
+  }
+
+  pixels.show();
+  delay(500);
 }
