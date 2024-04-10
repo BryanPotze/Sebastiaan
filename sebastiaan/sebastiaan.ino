@@ -26,16 +26,16 @@ int r1Rotations = 0;
 int r2Rotations = 0;
 int lastSensor = 0; 
 //motor speeds
-#define MOTOR_A_FULL_SPEED = 255; 
-#define MOTOR_A_STOP = 0;
-#define MOTOR_B_FULL_SPEED = 255;
-#define MOTOR_B_STOP = 0;
+#define MOTOR_A_FULL_SPEED 255 
+#define MOTOR_A_STOP 0
+#define MOTOR_B_FULL_SPEED 255
+#define MOTOR_B_STOP 0
 
 
 
 // buttons
-#define buttonPinA = 8; //pin for B1
-#define buttonPinB = 11; // pin for B2
+#define buttonPinA 8 //pin for B1
+#define buttonPinB 11 // pin for B2
 int buttonStateA;
 int buttonStateB;
 
